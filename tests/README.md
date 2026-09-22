@@ -23,7 +23,7 @@ npm run env:setup      # generates a keypair, seeds the store and the gateway
 | | |
 |---|---|
 | Store | http://localhost:8888 |
-| Admin | http://localhost:8888/wp-admin (`admin` / `password`) |
+| Admin | http://localhost:8888/wp-admin (`admin` / `password` on a fresh environment; localhost only, see the tunnel section) |
 | Gateway settings | WooCommerce → Settings → Payments → Afriex |
 | Webhook endpoint | http://localhost:8888/wp-json/afriex/v1/webhook |
 
@@ -46,26 +46,18 @@ Every `wp-env run` call takes roughly 45 seconds on a Windows-drive checkout —
 
 ## Exposing the site to Afriex
 
-Real Afriex webhooks cannot reach `localhost`, so closing tests 1, 2 and 9 means putting the site behind a tunnel (Cloudflare, ngrok, whatever you use). Point the tunnel at `http://localhost:8888`, then tell WordPress the hostname is legitimate:
+Real Afriex webhooks cannot reach `localhost`, so closing tests 1, 2 and 9 means putting the site behind a tunnel (Cloudflare, ngrok, whatever you use). Point the tunnel at `http://localhost:8888`.
 
-```bash
-echo wp-afriex.example.com > tests/mu-plugins/tunnel-host.txt
-```
+**Through a tunnel, only the webhook route answers. Everything else returns 404.** Use wp-admin at `http://localhost:8888` only.
 
-That file is read per request by [`tests/mu-plugins/00-tunnel.php`](mu-plugins/00-tunnel.php), so a change takes effect immediately — no restart. It's gitignored, since the host differs per developer.
+This is deliberate. An open tunnel would publish the whole dev site: a well-known admin login, WordPress admin (which amounts to running PHP) over a **read-write mount of this repo**, and the test signing key and `.git`, which Apache serves as plain files. Two layers enforce it, and `npm run env:setup` applies both:
 
-**Why this is needed.** `siteurl` and `home` are stored as `http://localhost:8888`. When a request arrives on a different Host, WordPress's canonical redirect rebuilds the URL from the incoming host but keeps the stored **port**, answering with:
+- [`tests/tools/tunnel-lockdown.mjs`](tools/tunnel-lockdown.mjs) writes a rewrite rule at the top of the site's `.htaccess`. It covers static files, which never reach PHP. The file belongs to wp-env's copy of WordPress, outside this repo, and `wp-env destroy` recreates it, which is why setup re-applies it every time. `npm run env:lockdown` applies it on its own.
+- [`tests/mu-plugins/00-tunnel.php`](mu-plugins/00-tunnel.php) returns the same 404 from PHP, as a backstop if the `.htaccess` rule is ever lost.
 
-```
-301 Moved Permanently
-location: https://your-tunnel-host:8888/
-```
+Requests are recognised as local by their Host header (`localhost` or `127.0.0.1`, optionally `:8888`). The tunnel forwards the public hostname as the Host, so tunnel traffic never matches.
 
-The tunnel doesn't serve 8888 on that hostname, so the browser hangs on a host that will never answer. It looks like a broken tunnel and isn't one — `x-redirect-by: WordPress` in the response headers is the tell.
-
-The mu-plugin resolves `home`/`siteurl` per request from the incoming host instead of pinning them, so the tunnel and `localhost:8888` both keep working. It also maps `X-Forwarded-Proto` onto `$_SERVER['HTTPS']`; without that, Cloudflare terminates TLS, WordPress sees plain HTTP, redirects to the https canonical URL, and Cloudflare forwards the retry as HTTP again — a redirect loop.
-
-Hosts are allowlisted rather than taken from the Host header as-is. Deriving site URLs from an unchecked Host header is how host-header injection produces poisoned password-reset links, and this plugin builds its own webhook URL from these options — a spoofed host would be displayed to a merchant as the address to hand Afriex.
+A fresh environment starts with `admin` / `password`. If a site was ever reachable without the lockdown, change the password (`npm run env:cli -- wp user update admin --user_pass=<new>`) and generate a new keypair (`node tests/tools/webhook.mjs keygen`, then `npm run env:setup`).
 
 Give Afriex this as the webhook URL:
 

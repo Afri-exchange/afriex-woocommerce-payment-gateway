@@ -14,6 +14,7 @@
 		"env:cli": "wp-env run cli wp",
 		"env:logs": "wp-env logs wordpress",
 		"env:setup": "node tests/tools/setup-env.mjs",
+		"env:lockdown": "node tests/tools/tunnel-lockdown.mjs",
 		"env:activate": "wp-env run cli wp plugin activate woocommerce afriex-woocommerce-payment-gateway",
 		"env:order": "wp-env run cli wp eval-file wp-content/plugins/afriex-woocommerce-payment-gateway/tests/tools/make-order.php",
 		"env:show": "wp-env run cli wp eval-file wp-content/plugins/afriex-woocommerce-payment-gateway/tests/tools/show-order.php",

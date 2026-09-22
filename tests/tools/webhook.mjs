@@ -50,8 +50,11 @@ function keygen() {
 		privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 	} );
 
-	fs.mkdirSync( KEY_DIR, { recursive: true } );
-	fs.writeFileSync( PRIVATE_KEY_PATH, privateKey );
+	fs.mkdirSync( KEY_DIR, { recursive: true, mode: 0o700 } );
+	// Owner-only. The mode option applies only when the file is created, so
+	// chmod as well to tighten a key that is being overwritten.
+	fs.writeFileSync( PRIVATE_KEY_PATH, privateKey, { mode: 0o600 } );
+	fs.chmodSync( PRIVATE_KEY_PATH, 0o600 );
 	fs.writeFileSync( PUBLIC_KEY_PATH, publicKey );
 
 	console.log( `Wrote ${ PRIVATE_KEY_PATH }` );
@@ -59,8 +62,8 @@ function keygen() {
 	console.log(
 		'Paste the public key into WooCommerce > Settings > Payments > Afriex >'
 	);
-	console.log( 'Webhook Public Key, or load it with:\n' );
-	console.log( '  npm run env:set-key\n' );
+	console.log( 'Webhook Public Key, or load it (this re-seeds the gateway settings) with:\n' );
+	console.log( '  npm run env:setup\n' );
 	console.log( publicKey );
 }
 

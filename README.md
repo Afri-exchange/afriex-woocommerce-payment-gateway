@@ -41,14 +41,21 @@ npm run webhook:send -- --payment-method-id pm_test_1 --status COMPLETED --amoun
 
 | Path | Role |
 |---|---|
-| `afriex-gateway-for-woocommerce.php` | Header, bootstrap, HPOS + blocks compatibility declarations, cron wiring |
-| `includes/class-afriex-gateway.php` | `WC_Payment_Gateway` subclass — classic checkout, settings, payment instructions |
+| `afriex-gateway-for-woocommerce.php` | Header, bootstrap, HPOS + blocks compatibility declarations |
+| `includes/abstract-afriex-payment-gateway.php` | Base for the payment methods: the shared account section, setup state, notices |
+| `includes/class-afriex-gateway.php` | `WC_Payment_Gateway` subclass — Bank Transfer: classic checkout, settings, payment instructions |
 | `includes/class-afriex-blocks-support.php` | `AbstractPaymentMethodType` subclass — block checkout registration |
-| `includes/class-afriex-api-client.php` | Thin REST client over `wp_remote_*` |
-| `includes/class-afriex-webhook-handler.php` | REST route, RSA-SHA256 verification, idempotency |
-| `includes/class-afriex-reconciler.php` | Applies transaction state to orders; the hourly sweep |
-| `includes/class-afriex-order-meta.php` | HPOS-safe order meta access |
-| `includes/class-afriex-status-mapper.php` | Afriex status → plugin action |
+| `includes/class-afriex-account-settings.php` | The one Afriex account both methods share: key, environment, webhook keys |
+| `includes/class-afriex-api-client.php` | Thin REST client over `wp_remote_*`, one per environment |
+| `includes/class-afriex-webhook-handler.php` | REST route, RSA-SHA256 verification, the event claim, dispatch |
+| `includes/class-afriex-settlement.php` | The one place an Afriex transaction changes an order |
+| `includes/class-afriex-settlement-decision.php` | The decision table, with no WordPress in it |
+| `includes/class-afriex-scheduler.php` | The `afriex_wc_sweep` Action Scheduler action and the cancellation rule |
+| `includes/class-afriex-ledger.php` | The plugin table: claims, locks and throttles |
+| `includes/class-afriex-migration.php` | The 1.0 to 1.1 upgrade, under a version check |
+| `includes/class-afriex-order-meta.php` | HPOS-safe order meta access and the exact look-ups |
+| `includes/class-afriex-status-mapper.php` | Afriex's status enum, sorted into four classes |
+| `includes/class-afriex-money.php`, `includes/class-afriex-phone.php` | Minor-unit money and E.164 phone numbers |
 | `includes/class-afriex-logger.php` | `WC_Logger` wrapper with redaction |
 
 ## Things worth knowing before changing this code
@@ -57,7 +64,7 @@ npm run webhook:send -- --payment-method-id pm_test_1 --status COMPLETED --amoun
 
 **Both checkouts, one processing path.** The JS module's `name` routes back to `Afriex_Gateway::process_payment()`. The blocks class reads the classic gateway's settings and availability rather than duplicating them, so the two checkouts cannot drift.
 
-**Orders start at `on-hold`, and that has a trap.** `WC_Order::needs_payment()` returns true only for `pending` and `failed`. An on-hold order reports `false` from creation, so any expiry or cancellation logic gated behind it never runs — the failure mode that left Mollie's bank-transfer orders stranded indefinitely. Expiry here is decided from Afriex transaction status and the account's own expiry window, never inferred from `needs_payment()`, and `Afriex_Reconciler::sweep()` is the backstop for a webhook that never arrives.
+**Orders start at `on-hold`, and that has a trap.** `WC_Order::needs_payment()` returns true only for `pending` and `failed`. An on-hold order reports `false` from creation, so any expiry or cancellation logic gated behind it never runs — the failure mode that left Mollie's bank-transfer orders stranded indefinitely. Expiry here is decided from Afriex transaction status and the account's own expiry window, never inferred from `needs_payment()`, and the `afriex_wc_sweep` Action Scheduler action in `Afriex_Scheduler` is the backstop for a webhook that never arrives.
 
 **Order meta only through the CRUD API.** `$order->get_meta()` / `$order->update_meta_data()`, never `get_post_meta()`. `wc_get_orders()` for queries, never `WP_Query` against `shop_order`. `Afriex_Order_Meta` is the one place this has to hold.
 

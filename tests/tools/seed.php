@@ -8,6 +8,12 @@
  * mounted repo, so the key never has to survive shell quoting on its way into
  * the container.
  *
+ * The file-scope variables carry the `afriex_` prefix because PHPCS reads a
+ * file in the plugin tree as a plugin file and its file-scope variables as
+ * globals. Prefixed, a `vendor/bin/phpcs` run over the tree is clean apart
+ * from the known errors in includes/class-afriex-logger.php and the one
+ * warning in tests/mu-plugins/00-tunnel.php.
+ *
  * @package Afriex_Gateway_For_WooCommerce
  */
 
@@ -15,13 +21,13 @@ if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 	return;
 }
 
-$key_path = __DIR__ . '/.keys/public.pem';
+$afriex_key_path = __DIR__ . '/.keys/public.pem';
 
-if ( ! file_exists( $key_path ) ) {
+if ( ! file_exists( $afriex_key_path ) ) {
 	WP_CLI::error( 'No public key at tests/tools/.keys/public.pem. Run: npm run webhook:keygen' );
 }
 
-$public_key = trim( file_get_contents( $key_path ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+$afriex_public_key = trim( file_get_contents( $afriex_key_path ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 update_option(
 	'woocommerce_afriex_settings',
@@ -34,7 +40,7 @@ update_option(
 		// Any non-empty value: is_available() only checks that a key is set, and
 		// these tests drive the webhook path rather than live API calls.
 		'api_key'            => 'test-api-key',
-		'webhook_public_key' => $public_key,
+		'webhook_public_key' => $afriex_public_key,
 		'collection_method'  => 'dedicated',
 		'logging'            => 'yes',
 	)
@@ -52,25 +58,25 @@ update_option( 'woocommerce_onboarding_profile', array( 'completed' => true ) );
 
 WP_CLI::log( 'Store configured: NGN, Nigeria.' );
 
-$existing = wc_get_products(
+$afriex_existing = wc_get_products(
 	array(
 		'limit'  => 1,
 		'status' => 'publish',
 	)
 );
 
-if ( empty( $existing ) ) {
-	$product = new WC_Product_Simple();
-	$product->set_name( 'Afriex Test Product' );
-	$product->set_regular_price( '49.99' );
-	$product->set_catalog_visibility( 'visible' );
-	$product->set_status( 'publish' );
-	$product->set_virtual( true );
-	$product->save();
+if ( empty( $afriex_existing ) ) {
+	$afriex_product = new WC_Product_Simple();
+	$afriex_product->set_name( 'Afriex Test Product' );
+	$afriex_product->set_regular_price( '49.99' );
+	$afriex_product->set_catalog_visibility( 'visible' );
+	$afriex_product->set_status( 'publish' );
+	$afriex_product->set_virtual( true );
+	$afriex_product->save();
 
-	WP_CLI::log( 'Created test product #' . $product->get_id() . ' at 49.99.' );
+	WP_CLI::log( 'Created test product #' . $afriex_product->get_id() . ' at 49.99.' );
 } else {
-	WP_CLI::log( 'Product already present (#' . $existing[0]->get_id() . '), leaving it alone.' );
+	WP_CLI::log( 'Product already present (#' . $afriex_existing[0]->get_id() . '), leaving it alone.' );
 }
 
 WP_CLI::success( 'Seed complete. Place an order, then read its _afriex_payment_method_id to drive the webhook tool.' );

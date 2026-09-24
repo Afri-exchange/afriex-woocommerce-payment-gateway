@@ -9,6 +9,7 @@
 		"wp-content/mu-plugins": "./tests/mu-plugins"
 	},
 	"config": {
+		"AFRIEX_DEV_MOCK_API": true,
 		"WP_DEBUG": true,
 		"WP_DEBUG_LOG": true,
 		"WP_DEBUG_DISPLAY": false,

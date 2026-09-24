@@ -5,8 +5,8 @@
 	"license": "GPL-2.0-or-later",
 	"private": true,
 	"scripts": {
-		"build": "wp-scripts build assets/js/src/afriex-blocks-checkout.js --output-path=assets/js/build",
-		"start": "wp-scripts start assets/js/src/afriex-blocks-checkout.js --output-path=assets/js/build",
+		"build": "wp-scripts build assets/js/src/afriex-blocks-checkout.js assets/js/src/afriex-checkout-return.js --output-path=assets/js/build",
+		"start": "wp-scripts start assets/js/src/afriex-blocks-checkout.js assets/js/src/afriex-checkout-return.js --output-path=assets/js/build",
 		"lint:js": "wp-scripts lint-js assets/js/src",
 		"env:start": "wp-env start",
 		"env:stop": "wp-env stop",
@@ -18,11 +18,18 @@
 		"env:activate": "wp-env run cli wp plugin activate woocommerce afriex-woocommerce-payment-gateway",
 		"env:order": "wp-env run cli wp eval-file wp-content/plugins/afriex-woocommerce-payment-gateway/tests/tools/make-order.php",
 		"env:show": "wp-env run cli wp eval-file wp-content/plugins/afriex-woocommerce-payment-gateway/tests/tools/show-order.php",
-		"env:sweep": "wp-env run cli wp eval \"do_action( 'afriex_reconcile_pending_orders' );\"",
+		"env:sweep": "wp-env run cli wp eval \"do_action( 'afriex_wc_sweep' );\"",
 		"env:hpos:on": "wp-env run cli wp wc hpos sync && wp-env run cli wp option update woocommerce_custom_orders_table_enabled yes",
 		"env:hpos:off": "wp-env run cli wp option update woocommerce_custom_orders_table_enabled no",
 		"webhook:keygen": "node tests/tools/webhook.mjs keygen",
-		"webhook:send": "node tests/tools/webhook.mjs send"
+		"webhook:send": "node tests/tools/webhook.mjs send",
+		"webhook:deposit": "node tests/tools/webhook.mjs deposit",
+		"webhook:status": "node tests/tools/webhook.mjs status",
+		"webhook:session": "node tests/tools/webhook.mjs session",
+		"webhook:pm": "node tests/tools/webhook.mjs pm",
+		"mock:state": "node tests/tools/webhook.mjs state",
+		"mock:fail": "node tests/tools/webhook.mjs fail",
+		"mock:reset": "node tests/tools/webhook.mjs reset"
 	},
 	"devDependencies": {
 		"@woocommerce/dependency-extraction-webpack-plugin": "^3.0.1",

@@ -3,7 +3,7 @@
  * Plugin Name: Afriex Gateway for WooCommerce
  * Plugin URI: https://github.com/codewithveek/afriex-woocommerce-payment-gateway
  * Description: Accept bank transfer and mobile money payments through Afriex virtual accounts.
- * Version: 1.0.0
+ * Version: 1.1.0-dev
  * Author: Afriex
  * Author URI: https://afriex.com
  * License: GPL-2.0-or-later
@@ -21,19 +21,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFRIEX_WC_VERSION', '1.0.0' );
+define( 'AFRIEX_WC_VERSION', '1.1.0-dev' );
 define( 'AFRIEX_WC_PLUGIN_FILE', __FILE__ );
 define( 'AFRIEX_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
- * Gateway id. Declared once so neither PHP nor JS has to repeat the literal.
+ * Gateway ids. Declared once so neither PHP nor JS has to repeat the literal.
+ *
+ * 'afriex' is Bank Transfer, unchanged from 1.0 so that existing orders,
+ * settings and meta keep working. 'afriex_checkout' is Afriex Checkout.
  */
 define( 'AFRIEX_WC_GATEWAY_ID', 'afriex' );
-
-/**
- * Cron hook for the reconciliation sweep.
- */
-define( 'AFRIEX_WC_RECONCILE_HOOK', 'afriex_reconcile_pending_orders' );
+define( 'AFRIEX_WC_CHECKOUT_GATEWAY_ID', 'afriex_checkout' );
 
 /**
  * Load the plugin's classes.
@@ -49,13 +48,33 @@ function afriex_wc_load_classes(): void {
 		return;
 	}
 
+	// Order matters only for inheritance: the account settings extend
+	// WC_Settings_API and the gateways extend Afriex_Payment_Gateway. The
+	// other classes reference each other only inside methods.
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-logger.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-money.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-phone.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-ledger.php';
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-api-client.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-account-settings.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-customer.php';
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-order-meta.php';
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-status-mapper.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-settlement-decision.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-settlement.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-bank-transfer-sweep.php';
+	// Before the Checkout gateway: that class's CHANNELS constant is defined
+	// from this one's, and a class constant is resolved as the class is
+	// declared, not when it is first read.
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-checkout-fields.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/abstract-afriex-payment-gateway.php';
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-gateway.php';
-	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-reconciler.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-checkout-gateway.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-checkout-return.php';
 	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-webhook-handler.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-scheduler.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-migration.php';
+	require_once AFRIEX_WC_PLUGIN_DIR . 'includes/class-afriex-admin.php';
 
 	$loaded = true;
 }
@@ -86,12 +105,16 @@ add_action(
 );
 
 /**
- * Register the classic checkout gateway.
+ * Register both payment methods.
+ *
+ * Each is enabled and configured independently (plan 2, 4.2); registering a
+ * gateway only puts it on the Payments list, it does not switch it on.
  */
 add_filter(
 	'woocommerce_payment_gateways',
 	function ( $gateways ) {
 		$gateways[] = 'Afriex_Gateway';
+		$gateways[] = 'Afriex_Checkout_Gateway';
 		return $gateways;
 	}
 );
@@ -105,7 +128,23 @@ add_action(
 
 		afriex_wc_load_classes();
 
-		( new Afriex_Webhook_Handler() )->register_routes_hook();
+		// All four run whether or not a payment method is enabled: in-flight
+		// orders must keep settling after a method is switched off, and
+		// neither the webhook route nor the return route is a gateway's to
+		// own (plan 4.2, plan 5.2, plan 7).
+		Afriex_Webhook_Handler::register();
+		Afriex_Checkout_Return::register();
+		Afriex_Migration::register();
+		Afriex_Scheduler::register();
+
+		if ( is_admin() ) {
+			Afriex_Payment_Gateway::register_admin_notices();
+			Afriex_Settlement::register_admin_notices();
+
+			// The order box, the "Check Afriex payment now" order action and
+			// the notices that belong to no one settings page (plan 4.2, 4.3).
+			Afriex_Admin::register();
+		}
 	}
 );
 
@@ -127,7 +166,11 @@ add_action(
 		add_action(
 			'woocommerce_blocks_payment_method_type_registration',
 			function ( \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
-				$registry->register( new Afriex_Blocks_Support() );
+				// One integration object per gateway, one shared bundle. Each
+				// reads its own settings key, afriex_data and
+				// afriex_checkout_data (plan 10).
+				$registry->register( new Afriex_Blocks_Support( AFRIEX_WC_GATEWAY_ID ) );
+				$registry->register( new Afriex_Blocks_Support( AFRIEX_WC_CHECKOUT_GATEWAY_ID ) );
 			}
 		);
 	}
@@ -153,38 +196,50 @@ add_filter(
 );
 
 /**
- * The reconciliation sweep.
- *
- * Webhooks are the fast path. This is the backstop that guarantees an order
- * cannot strand at on-hold forever if a webhook is lost: WC_Order::needs_payment()
- * returns false for on-hold orders, so nothing in WooCommerce core will ever
- * come back around to an unpaid Afriex order on its own.
+ * The sweep is the backstop for lost webhooks: WC_Order::needs_payment()
+ * returns false for on-hold orders, so nothing in WooCommerce core comes back
+ * to an unpaid Afriex order on its own. It is an Action Scheduler action
+ * owned by Afriex_Scheduler, registered on plugins_loaded above; the 1.0
+ * WP-Cron event is removed by Afriex_Migration.
  */
-add_action(
-	AFRIEX_WC_RECONCILE_HOOK,
+
+/**
+ * Activation: create the ledger table, migrate and schedule the sweep now,
+ * rather than on the first request after it.
+ *
+ * Activation runs after plugins_loaded, so the classes are loaded here. When
+ * WooCommerce is not active there is nothing to set up yet; the version check
+ * on the first request with WooCommerce does it instead. The migration is
+ * idempotent, so re-activating is harmless, and it re-creates the sweep that
+ * deactivation removed.
+ */
+register_activation_hook(
+	__FILE__,
 	function () {
-		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
+		if ( ! class_exists( 'WC_Payment_Gateway' ) || ! function_exists( 'wc_get_orders' ) ) {
 			return;
 		}
 
 		afriex_wc_load_classes();
 
-		( new Afriex_Reconciler() )->sweep();
+		Afriex_Migration::run();
 	}
 );
 
-register_activation_hook(
-	__FILE__,
-	function () {
-		if ( ! wp_next_scheduled( AFRIEX_WC_RECONCILE_HOOK ) ) {
-			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', AFRIEX_WC_RECONCILE_HOOK );
-		}
-	}
-);
-
+/**
+ * Deactivation: stop the sweep. Without the plugin loaded, Action Scheduler
+ * would find no callback for it and log a failure every five minutes. The
+ * 1.0 WP-Cron event is cleared too, for a site deactivated before migrating.
+ */
 register_deactivation_hook(
 	__FILE__,
 	function () {
-		wp_clear_scheduled_hook( AFRIEX_WC_RECONCILE_HOOK );
+		if ( class_exists( 'Afriex_Scheduler' ) ) {
+			Afriex_Scheduler::unschedule();
+		} elseif ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( 'afriex_wc_sweep' );
+		}
+
+		wp_clear_scheduled_hook( 'afriex_reconcile_pending_orders' );
 	}
 );

@@ -77,8 +77,9 @@ class Afriex_Logger {
 
 	private static function is_enabled(): bool {
 		if ( null === self::$enabled ) {
-			$settings      = get_option( 'woocommerce_' . AFRIEX_WC_GATEWAY_ID . '_settings', array() );
-			self::$enabled = isset( $settings['logging'] ) && 'yes' === $settings['logging'];
+			// The switch lives in the shared account settings, which fall back
+			// to the 1.0 gateway option until the migration has run.
+			self::$enabled = class_exists( 'Afriex_Account_Settings' ) && Afriex_Account_Settings::logging_enabled();
 		}
 
 		return self::$enabled;

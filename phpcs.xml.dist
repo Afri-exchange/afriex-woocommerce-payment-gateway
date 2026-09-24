@@ -38,6 +38,40 @@
 		</properties>
 	</rule>
 
+	<!-- WooCommerce registers this capability. -->
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="manage_woocommerce"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- WooCommerce's own naming for abstract classes (abstract-wc-*.php), and
+	     mu-plugins, which WordPress loads by file name, not by class. -->
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>/includes/abstract-*.php</exclude-pattern>
+		<exclude-pattern>/tests/mu-plugins/*</exclude-pattern>
+	</rule>
+
+	<!-- PHPUnit tests. A test method's name is its sentence, and a data
+	     provider has nothing to say about its cases that the case names do not
+	     say better. The bootstrap defines ABSPATH and ARRAY_A because the
+	     classes under test check for them; both are WordPress's own names,
+	     which is the whole point of defining them. -->
+	<rule ref="Squiz.Commenting.FunctionComment.Missing">
+		<exclude-pattern>/tests/unit/*</exclude-pattern>
+	</rule>
+	<rule ref="Squiz.Commenting.FunctionComment.MissingParamTag">
+		<exclude-pattern>/tests/unit/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Commenting.DocComment.MissingShort">
+		<exclude-pattern>/tests/unit/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound">
+		<exclude-pattern>/tests/unit/bootstrap.php</exclude-pattern>
+	</rule>
+
 	<config name="minimum_wp_version" value="6.0"/>
 	<config name="testVersion" value="7.4-"/>
 

@@ -1,6 +1,7 @@
 archs
 node_modules/
 vendor/
+.phpunit.result.cache
 assets/js/build/
 .qodo/
 *.log

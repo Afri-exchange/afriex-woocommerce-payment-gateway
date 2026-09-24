@@ -19,5 +19,7 @@ composer.lock
 package.json
 package-lock.json
 phpcs.xml.dist
+phpunit.xml.dist
+.phpunit.result.cache
 webpack.config.js
 README.md

@@ -140,6 +140,7 @@ class Afriex_Blocks_Support extends AbstractPaymentMethodType {
 			'id'          => $this->name,
 			'title'       => $gateway->get_title(),
 			'description' => $gateway->get_description(),
+			'showLogo'    => $gateway->shows_logo(),
 			'supports'    => array_filter( $gateway->supports, array( $gateway, 'supports' ) ),
 		);
 

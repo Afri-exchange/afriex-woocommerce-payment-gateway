@@ -45,6 +45,11 @@ class Afriex_Account_Settings extends WC_Settings_API {
 	private const MIN_RSA_BITS = 2048;
 
 	/**
+	 * Elliptic curves accepted for a webhook key: NIST P-256, P-384, P-521.
+	 */
+	private const EC_CURVES = array( 'prime256v1', 'secp384r1', 'secp521r1' );
+
+	/**
 	 * Fields that are actions or read-only displays, never stored.
 	 */
 	private const TRANSIENT_FIELDS = array( 'clear_api_key', 'webhook_url' );
@@ -140,7 +145,7 @@ class Afriex_Account_Settings extends WC_Settings_API {
 				'default'     => '',
 				'css'         => 'font-family: monospace; min-height: 8em;',
 				'placeholder' => "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
-				'description' => __( 'From Developers > Webhooks in your Afriex Business dashboard (production). An RSA key of at least 2048 bits, in PEM form.', 'afriex-gateway-for-woocommerce' ),
+				'description' => __( 'From Developers > Webhooks in your Afriex Business dashboard (production). An EC (P-256, P-384 or P-521) or 2048-bit+ RSA key, in PEM form.', 'afriex-gateway-for-woocommerce' ),
 			),
 			'webhook_public_key_sandbox'    => array(
 				'title'       => __( 'Webhook public key: sandbox', 'afriex-gateway-for-woocommerce' ),
@@ -442,7 +447,7 @@ class Afriex_Account_Settings extends WC_Settings_API {
 	 * @param string      $key   Field key.
 	 * @param string|null $value Posted value.
 	 * @return string
-	 * @throws Exception When the key is not a usable RSA public key.
+	 * @throws Exception When the key is not a usable EC or RSA public key.
 	 */
 	public function validate_webhook_public_key_production_field( $key, $value ) {
 		return self::validate_public_key(
@@ -457,7 +462,7 @@ class Afriex_Account_Settings extends WC_Settings_API {
 	 * @param string      $key   Field key.
 	 * @param string|null $value Posted value.
 	 * @return string
-	 * @throws Exception When the key is not a usable RSA public key.
+	 * @throws Exception When the key is not a usable EC or RSA public key.
 	 */
 	public function validate_webhook_public_key_sandbox_field( $key, $value ) {
 		return self::validate_public_key(
@@ -487,7 +492,8 @@ class Afriex_Account_Settings extends WC_Settings_API {
 	 * @param string $raw   Submitted key.
 	 * @param string $label Human name of the field, for the error.
 	 * @return string Normalised PEM, or '' when the field was emptied.
-	 * @throws Exception When the key is not an RSA public key of 2048+ bits.
+	 * @throws Exception When the key is not an EC key on an accepted curve or
+	 *                   an RSA key of 2048+ bits.
 	 */
 	public static function validate_public_key( string $raw, string $label ): string {
 		$pem = self::normalise_pem( $raw );
@@ -515,13 +521,32 @@ class Afriex_Account_Settings extends WC_Settings_API {
 		}
 
 		$details = openssl_pkey_get_details( $key );
+		$type    = is_array( $details ) ? ( $details['type'] ?? null ) : null;
 
-		if ( ! is_array( $details ) || OPENSSL_KEYTYPE_RSA !== ( $details['type'] ?? null ) ) {
+		// Afriex issues EC keys (the sandbox key is P-384), and its own SDK
+		// verifies with a type-agnostic createVerify( 'SHA256' ).
+		if ( OPENSSL_KEYTYPE_EC === $type ) {
+			if ( ! in_array( (string) ( $details['ec']['curve_name'] ?? '' ), self::EC_CURVES, true ) ) {
+				throw new Exception(
+					esc_html(
+						sprintf(
+							/* translators: %s: field name */
+							__( 'The %s uses an unsupported elliptic curve. Use P-256, P-384 or P-521. The previous value was kept.', 'afriex-gateway-for-woocommerce' ),
+							$label
+						)
+					)
+				);
+			}
+
+			return $pem;
+		}
+
+		if ( OPENSSL_KEYTYPE_RSA !== $type ) {
 			throw new Exception(
 				esc_html(
 					sprintf(
 						/* translators: %s: field name */
-						__( 'The %s is not an RSA key. The previous value was kept.', 'afriex-gateway-for-woocommerce' ),
+						__( 'The %s is not an RSA or EC key. The previous value was kept.', 'afriex-gateway-for-woocommerce' ),
 						$label
 					)
 				)

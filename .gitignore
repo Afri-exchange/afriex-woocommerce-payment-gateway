@@ -10,6 +10,9 @@ assets/js/build/
 tests/tools/.keys/
 tests/mu-plugins/tunnel-host.txt
 
+# Per-machine wp-env switches, e.g. pointing the dev site at the real sandbox.
+.wp-env.override.json
+
 # Internal research and audit output.
 research_notes/
 reports/

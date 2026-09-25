@@ -68,7 +68,7 @@ WooCommerce must be installed and active.
 3. **API key** - paste the API key for the environment you chose, from the API keys page of your [Afriex Business dashboard](https://business.afriex.com/).
 4. **Webhook public key** - paste the webhook public key for each environment you use, from **Developers > Webhooks** in the Afriex dashboard. Sandbox and production have different keys.
 5. **Webhook URL** - copy the URL shown on the settings page. It looks like `https://your-store.example/wp-json/afriex/v1/webhook`. Save it as your webhook URL in the Afriex dashboard.
-6. **Enable** the method, and optionally change its **Title** and **Description** (what the customer sees at checkout).
+6. **Enable** the method, and optionally change its **Title** and **Description** (what the customer sees at checkout). Untick **Afriex logo** to hide the logo next to the title.
 7. For **Afriex Checkout**, choose the **Allowed payment options** and the **Payment window (minutes)**.
 8. For **Afriex Bank Transfer**, set the **Instructions** shown with the account details and the **Payment window (hours)**.
 9. Click **Save changes**, then place a test order.
@@ -155,7 +155,7 @@ Afriex privacy policy: https://www.afriex.com/privacy-policy
 * New: The order-received page shows the payment's status after an Afriex Checkout payment and updates itself.
 * New: An Afriex payment box on the order screen, with a "Check Afriex payment now" button.
 * New: Payment windows. Unpaid orders are cancelled at the deadline, and a payment still in progress gets more time.
-* New: The Afriex logo on the checkout and on the Payments settings page.
+* New: The Afriex logo on the checkout and on the Payments settings page. It can be hidden at checkout for each method.
 * Improved: Afriex Bank Transfer gives every order its own NGN account, confirmed automatically when the transfer arrives.
 * Improved: Unpaid orders are checked with Afriex every few minutes, backing off over time, instead of hourly.
 * Improved: A payment in the wrong amount or currency, or one that could belong to more than one order, is flagged for review and never applied automatically.

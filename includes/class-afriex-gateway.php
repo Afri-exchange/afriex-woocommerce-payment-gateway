@@ -210,6 +210,7 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 					'afriex-gateway-for-woocommerce'
 				),
 			),
+			'show_logo'            => self::show_logo_field(),
 			'instructions'         => array(
 				'title'       => __( 'Instructions', 'afriex-gateway-for-woocommerce' ),
 				'type'        => 'textarea',

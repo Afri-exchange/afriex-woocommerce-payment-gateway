@@ -151,6 +151,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 				'type'    => 'textarea',
 				'default' => __( "You'll complete payment on Afriex's secure page.", 'afriex-gateway-for-woocommerce' ),
 			),
+			'show_logo'              => self::show_logo_field(),
 			'channels'               => array(
 				'title'             => __( 'Allowed payment options', 'afriex-gateway-for-woocommerce' ),
 				'type'              => 'multiselect',

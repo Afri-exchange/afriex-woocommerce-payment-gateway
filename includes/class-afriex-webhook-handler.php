@@ -159,10 +159,10 @@ class Afriex_Webhook_Handler {
 	 */
 
 	/**
-	 * Verify the RSA-SHA256 signature against the raw request body.
+	 * Verify the SHA-256 signature (ECDSA or RSA) against the raw request body.
 	 *
 	 * Afriex signs with its private key and the plugin verifies with the
-	 * public key from the merchant's dashboard. This is RSA, not HMAC: there
+	 * public key from the merchant's dashboard. This is asymmetric, not HMAC: there
 	 * is no shared secret, and nothing that can only read a delivery can
 	 * forge another one.
 	 *

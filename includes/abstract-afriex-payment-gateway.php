@@ -144,6 +144,43 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * The "Show Afriex logo" field, shared by every Afriex method.
+	 */
+	protected static function show_logo_field(): array {
+		return array(
+			'title'       => __( 'Afriex logo', 'afriex-gateway-for-woocommerce' ),
+			'type'        => 'checkbox',
+			'label'       => __( 'Show the Afriex logo next to the title at checkout', 'afriex-gateway-for-woocommerce' ),
+			'default'     => 'yes',
+			'description' => __( 'Applies to both the classic and the block checkout. The WooCommerce Payments list always shows it.', 'afriex-gateway-for-woocommerce' ),
+			'desc_tip'    => true,
+		);
+	}
+
+	/**
+	 * Whether shoppers see the Afriex logo beside this method's title.
+	 */
+	public function shows_logo(): bool {
+		return 'no' !== $this->get_option( 'show_logo', 'yes' );
+	}
+
+	/**
+	 * The logo on the classic checkout, unless the admin turned it off.
+	 *
+	 * `icon` itself stays set either way: WooCommerce's Payments settings
+	 * list reads the property directly, not through this method.
+	 *
+	 * @return string
+	 */
+	public function get_icon() {
+		if ( $this->shows_logo() ) {
+			return parent::get_icon();
+		}
+
+		return (string) apply_filters( 'woocommerce_gateway_icon', '', $this->id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter, applied as WC_Payment_Gateway::get_icon() does.
+	}
+
+	/**
 	 * Drives the test-mode badge on the WooCommerce Payments list (F79).
 	 *
 	 * @return bool

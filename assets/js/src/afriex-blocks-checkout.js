@@ -46,14 +46,15 @@ const AfriexMark = ( { ariaLabel } ) => (
 );
 
 /**
- * Label: the mark and the admin's title.
+ * Label: the mark, unless the admin turned it off, and the admin's title.
  *
- * @param {Object} props       Component props.
- * @param {string} props.title Method title.
+ * @param {Object}  props          Component props.
+ * @param {string}  props.title    Method title.
+ * @param {boolean} props.showLogo Whether to show the mark.
  */
-const AfriexLabel = ( { title } ) => (
+const AfriexLabel = ( { title, showLogo } ) => (
 	<span className="wc-block-components-payment-method-label wc-afriex-label">
-		<AfriexMark ariaLabel={ title } />
+		{ showLogo ? <AfriexMark ariaLabel={ title } /> : null }
 		{ title }
 	</span>
 );
@@ -132,7 +133,13 @@ const registerAfriexMethod = ( settingsKey, defaultLabel ) => {
 
 	const method = {
 		name: settings.id,
-		label: <AfriexLabel title={ label } />,
+		label: (
+			<AfriexLabel
+				title={ label }
+				// Missing means an older server: keep the logo, the default.
+				showLogo={ settings.showLogo !== false }
+			/>
+		),
 		content,
 		edit: content,
 		// Availability is decided server-side by the gateway's is_available(),

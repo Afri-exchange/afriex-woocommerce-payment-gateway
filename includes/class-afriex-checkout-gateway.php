@@ -545,6 +545,19 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 		}
 
 		try {
+			// Re-read the order now that the lock is held. The object loaded
+			// above predates the lock, so a double submit or a second tab that
+			// waited here would otherwise decide from stale meta: it would not
+			// see the session the first request just created, and would mint
+			// a second hosted session the shopper could also pay. Its save
+			// would also write duplicate single-value meta rows.
+			Afriex_Settlement::flush_order_cache( (int) $order->get_id() );
+			$order = wc_get_order( $order->get_id() );
+
+			if ( ! $order instanceof WC_Order ) {
+				throw new Exception( esc_html__( 'We could not load your order. Please try again.', 'afriex-gateway-for-woocommerce' ) );
+			}
+
 			return $this->start_session( $order );
 		} finally {
 			// Step 10.

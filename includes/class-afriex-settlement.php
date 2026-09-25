@@ -121,6 +121,24 @@ class Afriex_Settlement {
 	);
 
 	/**
+	 * The subset of RESOLVED_BY_PAYMENT raised about one refused transaction.
+	 *
+	 * These flags mean "Afriex took this money and the plugin would not apply
+	 * it". Only that same transaction later completing the order answers them
+	 * (the order total was corrected, then the refused payment accepted). A
+	 * DIFFERENT transaction completing the order does not: the refused money
+	 * is still in the merchant's Afriex account, and clearing the flag would
+	 * drop it from the store-wide review notice.
+	 */
+	private const RESOLVED_ONLY_BY_SAME_TRANSACTION = array(
+		'order_total_mismatch',
+		'amount_mismatch',
+		'currency_mismatch',
+		'no_expectation',
+		'amount_unreadable',
+	);
+
+	/**
 	 * How long the order lock survives a request that dies holding it.
 	 *
 	 * The ledger's own default is 30 s, which is shorter than the work this
@@ -888,9 +906,16 @@ class Afriex_Settlement {
 		// review flag sets may_cancel = false — could never be cancelled
 		// either. The reason is kept on the order rather than erased, and only
 		// the reasons a payment actually answers are cleared.
-		$resolved = in_array( Afriex_Order_Meta::get_review_flag( $order ), self::RESOLVED_BY_PAYMENT, true )
-			? Afriex_Order_Meta::clear_review_flag( $order )
-			: '';
+		$flag       = Afriex_Order_Meta::get_review_flag( $order );
+		$resolvable = in_array( $flag, self::RESOLVED_BY_PAYMENT, true );
+
+		if ( $resolvable && in_array( $flag, self::RESOLVED_ONLY_BY_SAME_TRANSACTION, true ) ) {
+			// A flag with no recorded transaction predates this rule; keep it,
+			// since nothing proves the refused money was the money now applied.
+			$resolvable = Afriex_Order_Meta::get_review_flag_transaction( $order ) === $txn_id;
+		}
+
+		$resolved = $resolvable ? Afriex_Order_Meta::clear_review_flag( $order ) : '';
 
 		if ( '' !== $resolved ) {
 			self::drop_from_review_notice( $order->get_id() );
@@ -1099,7 +1124,7 @@ class Afriex_Settlement {
 			? __( 'unknown', 'afriex-gateway-for-woocommerce' )
 			: Afriex_Order_Meta::format_amount( (float) Afriex_Money::to_major_string( (int) $expected, $currency ), $currency );
 
-		Afriex_Order_Meta::flag_for_review( $order, $flag );
+		Afriex_Order_Meta::flag_for_review( $order, $flag, $txn_id );
 		Afriex_Order_Meta::note_once(
 			$order,
 			$flag . ':' . $txn_id,
@@ -1169,14 +1194,14 @@ class Afriex_Settlement {
 		$paid_text  = '' === $paid_text ? $session_text : $paid_text;
 		$total_text = Afriex_Order_Meta::format_amount( (float) $order->get_total(), $order->get_currency() );
 
-		Afriex_Order_Meta::flag_for_review( $order, 'order_total_mismatch' );
+		Afriex_Order_Meta::flag_for_review( $order, 'order_total_mismatch', $txn_id );
 
 		$noted = Afriex_Order_Meta::note_once(
 			$order,
 			'order_total_mismatch:' . $txn_id,
 			sprintf(
-				/* translators: 1: amount the session was created for, 2: amount Afriex confirmed, 3: the order's current total, 4: transaction id */
-				__( 'Afriex confirmed a payment of %2$s against a payment page created for %1$s, but this order now totals %3$s (transaction %4$s). The order was not completed, because the payment no longer matches what the order costs. Review it, then either adjust the order or refund the payment.', 'afriex-gateway-for-woocommerce' ),
+				/* translators: 1: amount Afriex was asked to collect, 2: amount Afriex confirmed, 3: the order's current total, 4: transaction id */
+				__( 'Afriex confirmed a payment of %2$s against a request to collect %1$s, but this order now totals %3$s (transaction %4$s). The order was not completed, because the payment no longer matches what the order costs. Review it, then either adjust the order or refund the payment.', 'afriex-gateway-for-woocommerce' ),
 				$session_text,
 				$paid_text,
 				$total_text,
@@ -2143,14 +2168,17 @@ class Afriex_Settlement {
 			}
 		}
 
-		$chosen = array_merge( $open, $closed );
-
-		if ( count( $chosen ) > self::MAX_REFERENCE_LISTINGS ) {
+		// Open sessions come first, so the slice drops closed ones before any
+		// open one. A closed session failed terminally and its hosted page can
+		// no longer take money, so leaving it out loses no evidence. Only an
+		// OPEN session left unlisted makes the answer incomplete; reporting
+		// truncation for closed ones used to stop the expire routine from ever
+		// cancelling an order that had been retried more than a few times.
+		if ( count( $open ) > self::MAX_REFERENCE_LISTINGS ) {
 			$info['truncated'] = true;
-			$chosen            = array_slice( $chosen, 0, self::MAX_REFERENCE_LISTINGS );
 		}
 
-		return $chosen;
+		return array_slice( array_merge( $open, $closed ), 0, self::MAX_REFERENCE_LISTINGS );
 	}
 
 	/**

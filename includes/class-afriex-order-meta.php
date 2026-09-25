@@ -154,6 +154,13 @@ class Afriex_Order_Meta {
 	public const KEY_NEEDS_REVIEW = '_afriex_needs_review';
 
 	/**
+	 * The Afriex transaction a review flag was raised about, when it was
+	 * raised about a refused transaction. Only that transaction completing
+	 * the order resolves such a flag; see flag_for_review().
+	 */
+	public const KEY_NEEDS_REVIEW_TXN = '_afriex_needs_review_txn';
+
+	/**
 	 * The review reason an order was flagged with and has since resolved.
 	 *
 	 * KEY_NEEDS_REVIEW is cleared when the thing it was raised about is
@@ -1036,16 +1043,38 @@ class Afriex_Order_Meta {
 	 * seen to be overpaid is still, first of all, a legacy pool order, and
 	 * overwriting the reason would lose why it was set aside.
 	 *
-	 * @param WC_Order $order  Order.
-	 * @param string   $reason Short reason code.
+	 * When the flag is about a specific Afriex transaction that was refused
+	 * (a short payment, the wrong currency, a changed order total), pass its
+	 * id. It is remembered with the flag so that a LATER, different payment
+	 * completing the order does not clear it: the refused money is still in
+	 * the merchant's Afriex account and still needs a person.
+	 *
+	 * @param WC_Order $order          Order.
+	 * @param string   $reason         Short reason code.
+	 * @param string   $transaction_id Afriex transaction the flag is about, if any.
 	 */
-	public static function flag_for_review( WC_Order $order, string $reason ): void {
+	public static function flag_for_review( WC_Order $order, string $reason, string $transaction_id = '' ): void {
 		if ( '' !== (string) $order->get_meta( self::KEY_NEEDS_REVIEW ) ) {
 			return;
 		}
 
 		$order->update_meta_data( self::KEY_NEEDS_REVIEW, $reason );
+
+		if ( '' !== $transaction_id ) {
+			$order->update_meta_data( self::KEY_NEEDS_REVIEW_TXN, $transaction_id );
+		}
+
 		$order->save();
+	}
+
+	/**
+	 * The Afriex transaction the review flag was raised about, or '' when the
+	 * flag is not about one transaction.
+	 *
+	 * @param WC_Order $order Order.
+	 */
+	public static function get_review_flag_transaction( WC_Order $order ): string {
+		return (string) $order->get_meta( self::KEY_NEEDS_REVIEW_TXN );
 	}
 
 	/**
@@ -1081,6 +1110,7 @@ class Afriex_Order_Meta {
 		}
 
 		$order->delete_meta_data( self::KEY_NEEDS_REVIEW );
+		$order->delete_meta_data( self::KEY_NEEDS_REVIEW_TXN );
 		$order->update_meta_data( self::KEY_RESOLVED_REVIEW, $reason );
 		$order->save();
 

@@ -103,19 +103,38 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 		// a store that has set woocommerce_checkout_phone_field to hidden or
 		// optional would otherwise send the shopper "Please enter your billing
 		// phone number" with no box to type it in. While this method is on
-		// offer the field is present and required; the refusal in
-		// validate_fields() and process_payment() stays either way.
+		// offer at checkout the field is present, and it is required only
+		// when the shopper chose this method; the refusal in validate_fields()
+		// and process_payment() stays either way.
 		add_filter( 'woocommerce_billing_fields', array( $this, 'require_billing_phone' ), 20 );
 	}
 
 	/**
-	 * Keep the billing phone field on the form, and required, for this method.
+	 * Keep the billing phone field on the form for this method, and required
+	 * only when the shopper actually chose it.
+	 *
+	 * The store's own phone setting is left alone for everyone else. Making
+	 * the field required whenever this method was merely enabled overrode a
+	 * store's "optional" or "hidden" choice for every buyer, whatever they
+	 * paid with, and even where Bank Transfer was not on offer at all (in
+	 * Sandbox, outside NGN, above the ceiling). validate_fields() and
+	 * process_payment() still refuse a missing phone for Bank Transfer.
 	 *
 	 * @param array|mixed $fields Billing fields WooCommerce is about to show.
 	 * @return array|mixed
 	 */
 	public function require_billing_phone( $fields ) {
 		if ( ! is_array( $fields ) || 'yes' !== $this->enabled || is_admin() ) {
+			return $fields;
+		}
+
+		// My Account's address form uses this filter too; only checkout needs
+		// the phone, and only while the method can actually be chosen.
+		if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) && ! self::is_checkout_submission() ) {
+			return $fields;
+		}
+
+		if ( ! $this->is_available() ) {
 			return $fields;
 		}
 
@@ -133,9 +152,29 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 			);
 		}
 
-		$fields['billing_phone']['required'] = true;
+		if ( self::is_checkout_submission() && AFRIEX_WC_GATEWAY_ID === self::submitted_payment_method() ) {
+			$fields['billing_phone']['required'] = true;
+		}
 
 		return $fields;
+	}
+
+	/**
+	 * Whether this request is WooCommerce processing a classic checkout form.
+	 */
+	private static function is_checkout_submission(): bool {
+		return defined( 'WOOCOMMERCE_CHECKOUT' ) && WOOCOMMERCE_CHECKOUT;
+	}
+
+	/**
+	 * The payment method the shopper chose on the submitted checkout form.
+	 *
+	 * Read only to decide whether the phone is required, the same value
+	 * WooCommerce itself reads from the form it has just nonce-checked.
+	 */
+	private static function submitted_payment_method(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies the checkout nonce before validating fields; this only picks which fields are required.
+		return isset( $_POST['payment_method'] ) ? sanitize_key( wp_unslash( $_POST['payment_method'] ) ) : '';
 	}
 
 	/**

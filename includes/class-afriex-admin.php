@@ -459,7 +459,7 @@ class Afriex_Admin {
 		$labels = array(
 			'amount_mismatch'         => __( 'The amount Afriex reported does not match this order.', 'afriex-gateway-for-woocommerce' ),
 			'currency_mismatch'       => __( 'Afriex reported this payment in a different currency from the order.', 'afriex-gateway-for-woocommerce' ),
-			'order_total_mismatch'    => __( 'The payment matches the Afriex payment page it was made on, but this order has cost something different since that page was created.', 'afriex-gateway-for-woocommerce' ),
+			'order_total_mismatch'    => __( 'The payment matches what Afriex was asked to collect, but this order\'s total has changed since then.', 'afriex-gateway-for-woocommerce' ),
 			'no_expectation'          => __( 'This plugin has no record of what this order was meant to be paid, so a payment cannot be checked against it.', 'afriex-gateway-for-woocommerce' ),
 			'credentials_unavailable' => __( 'This order was taken with an Afriex API key the store no longer has, so its payments cannot be checked here. Restore that key, or check the order in your Afriex dashboard.', 'afriex-gateway-for-woocommerce' ),
 			'amount_unreadable'       => __( 'Afriex reported an amount this plugin could not read.', 'afriex-gateway-for-woocommerce' ),

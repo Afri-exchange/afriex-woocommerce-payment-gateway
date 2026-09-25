@@ -82,6 +82,7 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 			'afriex-gateway-for-woocommerce'
 		);
 		$this->has_fields         = false;
+		$this->icon               = self::icon_url();
 		$this->supports           = array( 'products' );
 
 		$this->init_form_fields();
@@ -293,7 +294,7 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 	 * Hidden from shoppers when a bank transfer cannot be collected here.
 	 *
 	 * On top of the base class's rules (disabled, no API key, a recorded
-	 * 401/403): Afriex issues customer virtual accounts in naira only, up to
+	 * 401): Afriex issues customer virtual accounts in naira only, up to
 	 * ₦5,000,000, and only from a production account.
 	 *
 	 * @return bool

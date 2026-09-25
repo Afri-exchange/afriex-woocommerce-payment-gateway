@@ -29,6 +29,7 @@ function afriex_wc_uninstall_site(): void {
 		'afriex_wc_channels',
 		'afriex_wc_db_version',
 		'afriex_wc_auth_error',
+		'afriex_wc_checkout_refused',
 		'afriex_wc_pool_notice',
 		'afriex_wc_review_notice',
 		'afriex_wc_environment_notice',

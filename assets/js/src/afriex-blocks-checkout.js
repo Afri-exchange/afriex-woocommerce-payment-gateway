@@ -19,8 +19,9 @@ import { decodeEntities } from '@wordpress/html-entities';
 import { __ } from '@wordpress/i18n';
 
 /**
- * The Afriex mark. Inline rather than an image file so it costs no HTTP
- * request and scales with the label.
+ * The Afriex mark, the same drawing as assets/images/afriex-icon.svg. Inline
+ * rather than an image file so it costs no HTTP request and scales with the
+ * label.
  *
  * @param {Object} props           Component props.
  * @param {string} props.ariaLabel Accessible name for the mark.
@@ -29,15 +30,16 @@ const AfriexMark = ( { ariaLabel } ) => (
 	<svg
 		width="24"
 		height="24"
-		viewBox="0 0 24 24"
+		viewBox="0 0 48 48"
 		role="img"
 		aria-label={ ariaLabel }
 		focusable="false"
 		style={ { verticalAlign: 'middle', marginRight: '0.5em' } }
 	>
-		<circle cx="12" cy="12" r="11" fill="#0b6e4f" />
+		<rect width="48" height="48" rx="11" fill="#0065FF" />
 		<path
-			d="M12 5.5 17.5 18h-2.6l-1-2.4H9.1l-1 2.4H5.5L11 5.5h1zm-.5 3.9-1.6 3.9h3.2l-1.6-3.9z"
+			transform="translate(24 24) scale(0.82) translate(-16 -20.1)"
+			d="M15.7605 8.72194L10.516 17.0377L6.23948 14.8725C5.91096 14.7066 5.54548 14.6276 5.17778 14.6429C4.81009 14.6582 4.45239 14.7673 4.13878 14.9599C3.82516 15.1524 3.56602 15.422 3.386 15.743C3.20598 16.0639 3.11107 16.4256 3.1103 16.7936C3.11115 17.1445 3.19755 17.4898 3.362 17.7996C3.52645 18.1095 3.764 18.3746 4.05405 18.5719L7.887 21.1929L3.1103 28.767L0 33.6853H7.56343L13.1733 24.8047L25.0253 32.902C25.7734 33.4126 26.6582 33.6856 27.564 33.6853C28.2827 33.6849 28.9903 33.5076 29.6243 33.1689C30.2583 32.8302 30.799 32.3406 31.1988 31.7433C31.5986 31.146 31.8451 30.4594 31.9166 29.7442C31.9881 29.029 31.8823 28.3072 31.6086 27.6426L24.114 9.4419C22.6566 5.90151 17.807 5.48225 15.7605 8.72194ZM16.2404 19.9458L19.4384 14.8806L22.9194 23.3365L16.2404 19.9458Z"
 			fill="#ffffff"
 		/>
 	</svg>

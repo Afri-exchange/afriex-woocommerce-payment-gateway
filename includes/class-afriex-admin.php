@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  *    guard it (plan 13): the plugin adds no second form and no second URL that
  *    could be reached without them. It runs the same throttled, locked check
  *    the sweep and the order-received page run.
- * 3. **The notices that belong to no single screen.** The 401/403, the missing
+ * 3. **The notices that belong to no single screen.** The 401, the missing
  *    webhook key and the environment switch are the base gateway class's, and
  *    the review flag is the settlement engine's, because each of those is
  *    written where it is detected. What is left is the two this class owns:

@@ -206,13 +206,9 @@ curl -s -X POST http://localhost:8888/wp-json/afriex-mock/v1/pay \
 
 `outcome` is `success`, `failure`, `processing` or `delayed`; the other fields are `channel`, `delay`, `webhook_order`, `webhook_delay`, `lose_webhook`, `amount` and `currency`. It answers with the transaction it recorded, where it would have redirected, and what it delivered or queued.
 
-**Opening the page in a browser on this http site.** The `checkoutUrl` is `https` by default, because Afriex's own page always is and because the plugin refuses any other scheme (plan 5.1 step 7) — a rule worth keeping under test. This site has no TLS, so a browser test opens the same page over `http` (the form posts to whatever URL it was opened on) and asks the mock to send the shopper back over `http` too:
+**Opening the page in a browser on this http site.** The stored `checkoutUrl` is `https`, because Afriex's own page always is and because the plugin refuses any other scheme (plan 5.1 step 7) — a rule worth keeping under test. This site has no TLS, so the mock rewrites only the redirect handed to the browser (classic, block and order-pay checkout) to `http`, and a page opened over `http` sends the shopper back over `http` too. A normal checkout in a browser therefore just works; the stored meta stays `https`. If you open a stored `https://localhost:8888/?afriex-mock-pay=…` link by hand, change it to `http`.
 
-```bash
-curl -s -X POST http://localhost:8888/wp-json/afriex-mock/v1/settings -d redirect_url_scheme=http
-```
-
-Set it back to `as-is` afterwards. `checkout_url_scheme=http` makes the stored `checkoutUrl` itself `http`, which the plugin then refuses — useful only for testing that refusal.
+`redirect_url_scheme` (`http`, `https` or `as-is`) still overrides the return scheme for every caller, including `POST /pay`. `checkout_url_scheme=http` makes the stored `checkoutUrl` itself `http`, which the plugin then refuses — useful only for testing that refusal.
 
 WooCommerce's coming-soon mode is on for store pages on this site, so a logged-out browser sees a placeholder instead of the order-received page. Switch `woocommerce_coming_soon` to `no` for the run, and back to `yes` afterwards.
 
@@ -235,7 +231,8 @@ WooCommerce's coming-soon mode is on for store pages on this site, so a logged-o
 | `unavailable` | `503` with `Retry-After: 1` |
 | `rate_limited` | `429` with `Retry-After: 1` |
 | `gateway` | `502` with Cloudflare's HTML body and no Afriex JSON |
-| `auth` | `401 AUTHENTICATION_ERROR` |
+| `auth` | `401 AUTHENTICATION_ERROR` — hides every Afriex method |
+| `forbidden` | `403` with `{"message":"Not allowed"}`, Afriex's body for a checkout session it will not create for this business — on `checkout_session`, hides Afriex Checkout only |
 | `server` | `500 INTERNAL_SERVER_ERROR` |
 | `network` | A transport failure, as if the host were unreachable |
 | `empty_body` | `200` with an empty body |

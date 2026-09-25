@@ -30,6 +30,17 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 	public const GATEWAY_IDS = array( 'afriex', 'afriex_checkout' );
 
 	/**
+	 * The Afriex mark, for the gateway's `icon`.
+	 *
+	 * A plain URL rather than markup: WooCommerce's Payments settings list
+	 * shows `icon` only when it is a valid URL, and classic checkout wraps
+	 * it in an <img> itself.
+	 */
+	protected static function icon_url(): string {
+		return plugins_url( 'assets/images/afriex-icon.svg', AFRIEX_WC_PLUGIN_FILE );
+	}
+
+	/**
 	 * The shared account settings.
 	 */
 	public function account(): Afriex_Account_Settings {
@@ -176,7 +187,7 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 	 * Hidden from shoppers when it cannot take a payment.
 	 *
 	 * Without an API key every order would fail in process_payment() after the
-	 * shopper filled in the whole form; after a 401/403 every call fails the
+	 * shopper filled in the whole form; after a 401 every call fails the
 	 * same way until the key is fixed (F84).
 	 *
 	 * @return bool
@@ -399,7 +410,7 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Site-wide notices for store managers, while an Afriex method is enabled.
 	 *
-	 * - A recorded 401/403 (F84) shows on every admin screen: both methods have
+	 * - A recorded 401 (F84) shows on every admin screen: both methods have
 	 *   vanished from checkout, which is urgent and otherwise invisible.
 	 * - Missing settings show on the dashboard, Plugins and WooCommerce
 	 *   settings screens only, to inform without nagging.
@@ -420,6 +431,7 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 		}
 
 		self::render_auth_error_notice( false );
+		self::render_session_refusal_notice();
 		self::render_environment_notice();
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
@@ -469,6 +481,31 @@ abstract class Afriex_Payment_Gateway extends WC_Payment_Gateway {
 			echo ' <a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=' . AFRIEX_WC_GATEWAY_ID ) ) . '">' . esc_html__( 'Review the Afriex settings', 'afriex-gateway-for-woocommerce' ) . '</a>';
 		}
 
+		echo '</p></div>';
+	}
+
+	/**
+	 * Tell the store manager that Afriex refused Afriex Checkout a session,
+	 * which hides that method alone. Its own settings page lists the same
+	 * reason inline among the availability problems.
+	 */
+	protected static function render_session_refusal_notice(): void {
+		$settings = get_option( 'woocommerce_' . AFRIEX_WC_CHECKOUT_GATEWAY_ID . '_settings', array() );
+
+		if ( ! is_array( $settings ) || 'yes' !== ( $settings['enabled'] ?? '' ) ) {
+			return;
+		}
+
+		$refusal = Afriex_Checkout_Gateway::session_refusal();
+
+		if ( null === $refusal ) {
+			return;
+		}
+
+		echo '<div class="notice notice-error afriex-session-refused"><p>';
+		echo esc_html__( 'Afriex Checkout is hidden at checkout.', 'afriex-gateway-for-woocommerce' ) . ' ';
+		echo esc_html( Afriex_Checkout_Gateway::session_refusal_message( $refusal ) );
+		echo ' <a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=' . AFRIEX_WC_CHECKOUT_GATEWAY_ID ) ) . '">' . esc_html__( 'Review the Afriex settings', 'afriex-gateway-for-woocommerce' ) . '</a>';
 		echo '</p></div>';
 	}
 

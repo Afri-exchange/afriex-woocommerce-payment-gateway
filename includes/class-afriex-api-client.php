@@ -54,7 +54,7 @@ class Afriex_Api_Client {
 	public const ENV_PRODUCTION = 'production';
 
 	/**
-	 * Option holding the last 401/403 per environment (F84).
+	 * Option holding the last 401 per environment (F84).
 	 */
 	public const AUTH_ERROR_OPTION = 'afriex_wc_auth_error';
 
@@ -404,7 +404,7 @@ class Afriex_Api_Client {
 	}
 
 	/**
-	 * The last 401/403 recorded for an environment, or null.
+	 * The last 401 recorded for an environment, or null.
 	 *
 	 * @param string|null $environment Environment, null for the configured one.
 	 * @return array|null status, code, time.
@@ -417,7 +417,7 @@ class Afriex_Api_Client {
 	}
 
 	/**
-	 * Forget recorded 401/403s, e.g. when the account settings are saved.
+	 * Forget recorded 401s, e.g. when the account settings are saved.
 	 */
 	public static function clear_auth_errors(): void {
 		if ( false !== get_option( self::AUTH_ERROR_OPTION, false ) ) {
@@ -739,7 +739,12 @@ class Afriex_Api_Client {
 		$error       = self::parse_error_body( is_array( $decoded ) ? $decoded : null, $status );
 		$retry_after = self::parse_retry_after( wp_remote_retrieve_header( $response, 'retry-after' ) );
 
-		if ( in_array( $status, array( 401, 403 ), true ) ) {
+		// Only a 401 says anything about the key: Afriex answers a missing,
+		// revoked or under-permissioned key with 401 alike. A 403 is one
+		// endpoint refusing this business (a checkout session the account
+		// may not create, a virtual account pending compliance review), so
+		// it must not hide every Afriex method; the caller handles it.
+		if ( 401 === $status ) {
 			$this->record_auth_error( $status, $error['code'] );
 		}
 
@@ -813,7 +818,7 @@ class Afriex_Api_Client {
 	}
 
 	/**
-	 * Record a 401/403 so an admin notice can explain why Afriex is hidden
+	 * Record a 401 so an admin notice can explain why Afriex is hidden
 	 * (F84). Keyed by environment: a bad production key says nothing about
 	 * sandbox.
 	 *

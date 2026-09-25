@@ -187,8 +187,10 @@ class Afriex_Account_Settings extends WC_Settings_API {
 		Afriex_Logger::reset();
 
 		// A saved key is a fresh start: the gateways stop hiding for a
-		// previous 401/403 until the next call proves otherwise (F84).
+		// previous 401, or Checkout for a refused session, until the next
+		// call proves otherwise (F84).
 		Afriex_Api_Client::clear_auth_errors();
+		Afriex_Checkout_Gateway::clear_session_refusals();
 
 		self::check_environment_switch( $before );
 

@@ -170,6 +170,11 @@ class Afriex_Mock_Api {
 		// given the https scheme here — only ever here, in a file that never
 		// ships — so that the method can be exercised at all locally.
 		add_filter( 'woocommerce_afriex_checkout_return_url_base', array( __CLASS__, 'https_return_base' ) );
+
+		// The https checkoutUrl above cannot be opened on this TLS-less site,
+		// so the redirect the shopper's browser follows is sent over http.
+		add_filter( 'woocommerce_payment_successful_result', array( __CLASS__, 'browser_checkout_result' ), 20, 2 );
+		add_action( 'woocommerce_rest_checkout_process_payment_with_context', array( __CLASS__, 'browser_checkout_block_result' ), 1000, 2 );
 	}
 
 	/**
@@ -1501,7 +1506,7 @@ class Afriex_Mock_Api {
 
 		self::pay_session( $session, $submission );
 
-		$target = self::redirect_target( $session );
+		$target = self::redirect_target( $session, true );
 
 		// Exactly what the real page does: 302 to the merchant's redirectUrl.
 		// wp_redirect(), not wp_safe_redirect(): the store is a different
@@ -1894,7 +1899,7 @@ class Afriex_Mock_Api {
 			'Session'    => (string) ( $session['sessionId'] ?? '' ),
 			'Expires'    => (string) ( $session['expiresAt'] ?? '' ),
 			'Customer'   => (string) ( $session['customer']['name'] ?? '' ) . ' <' . (string) ( $session['customer']['email'] ?? '' ) . '>',
-			'Returns to' => self::redirect_target( $session ),
+			'Returns to' => self::redirect_target( $session, true ),
 		);
 
 		$html  = '<h1>Afriex (mock hosted page)</h1>';
@@ -1986,13 +1991,97 @@ class Afriex_Mock_Api {
 	 * dev site is http, so a browser run can ask for the scheme to be
 	 * downgraded; by default nothing is touched.
 	 *
+	 * A browser that opened the page itself over plain http is already on
+	 * this TLS-less site, so an https return here could only fail with
+	 * ERR_SSL_PROTOCOL_ERROR; it goes back over http instead.
+	 *
 	 * @param array $session Session record.
+	 * @param bool  $browser Whether the target is for the browser on the page.
 	 */
-	private static function redirect_target( array $session ): string {
+	private static function redirect_target( array $session, bool $browser = false ): string {
 		$url    = (string) ( $session['redirectUrl'] ?? home_url( '/' ) );
 		$scheme = (string) self::settings( 'redirect_url_scheme' );
 
-		return in_array( $scheme, array( 'http', 'https' ), true ) ? set_url_scheme( $url, $scheme ) : $url;
+		if ( in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return set_url_scheme( $url, $scheme );
+		}
+
+		if ( $browser && ! is_ssl() && self::is_this_site( $url ) ) {
+			return set_url_scheme( $url, 'http' );
+		}
+
+		return $url;
+	}
+
+	/**
+	 * Whether a URL points at this site's own host and port.
+	 *
+	 * @param string $url URL.
+	 */
+	private static function is_this_site( string $url ): bool {
+		$home = wp_parse_url( home_url() );
+		$that = wp_parse_url( $url );
+
+		return is_array( $home ) && is_array( $that )
+			&& strtolower( (string) ( $home['host'] ?? '' ) ) === strtolower( (string) ( $that['host'] ?? '' ) )
+			&& (int) ( $home['port'] ?? 0 ) === (int) ( $that['port'] ?? 0 );
+	}
+
+	/**
+	 * Send the browser to the fake hosted page over this site's own scheme.
+	 *
+	 * The stored checkoutUrl stays https, so the plugin's https-only rule is
+	 * still exercised (plan 5.1 step 7). Only the redirect handed to the
+	 * shopper's browser is rewritten, and only when it is this mock's page
+	 * on this http site; the real Afriex page is never touched.
+	 *
+	 * @param string $url Redirect URL.
+	 */
+	private static function browser_checkout_url( string $url ): string {
+		if ( is_ssl() || 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) ) {
+			return $url;
+		}
+
+		if ( 'https' !== strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) || ! self::is_this_site( $url ) ) {
+			return $url;
+		}
+
+		if ( false === strpos( (string) wp_parse_url( $url, PHP_URL_QUERY ), self::PAGE_QUERY_VAR . '=' ) ) {
+			return $url;
+		}
+
+		return set_url_scheme( $url, 'http' );
+	}
+
+	/**
+	 * Classic checkout and the order-pay page.
+	 *
+	 * @param mixed $result   Gateway result.
+	 * @param mixed $order_id Order id.
+	 * @return mixed
+	 */
+	public static function browser_checkout_result( $result, $order_id ) {
+		unset( $order_id );
+
+		if ( is_array( $result ) && isset( $result['redirect'] ) && is_string( $result['redirect'] ) ) {
+			$result['redirect'] = self::browser_checkout_url( $result['redirect'] );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Block checkout (the Store API sets the redirect at priority 999).
+	 *
+	 * @param mixed $context Payment context.
+	 * @param mixed $result  PaymentResult.
+	 */
+	public static function browser_checkout_block_result( $context, $result ): void {
+		unset( $context );
+
+		if ( is_object( $result ) && method_exists( $result, 'set_redirect_url' ) && is_string( $result->redirect_url ) && '' !== $result->redirect_url ) {
+			$result->set_redirect_url( self::browser_checkout_url( $result->redirect_url ) );
+		}
 	}
 
 	/**
@@ -2275,6 +2364,11 @@ class Afriex_Mock_Api {
 
 			case 'auth':
 				return self::error( 401, 'AUTHENTICATION_ERROR', 'Forced failure: invalid business API key.' );
+
+			case 'forbidden':
+				// The body Afriex documents for a checkout-session route it
+				// will not serve this business: a bare message, no code.
+				return self::response( 403, array( 'message' => 'Not allowed' ) );
 
 			case 'server':
 				return self::error( 500, 'INTERNAL_SERVER_ERROR', 'Forced failure: internal server error.' );

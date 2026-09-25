@@ -41,6 +41,12 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 	public const CHANNELS_OPTION = 'afriex_wc_channels';
 
 	/**
+	 * Option holding, per environment, the last 403 Afriex gave a
+	 * checkout-session create: {status, code, time}.
+	 */
+	public const SESSION_REFUSED_OPTION = 'afriex_wc_checkout_refused';
+
+	/**
 	 * Afriex's own session minimum: 100 minor units, "one major unit" (plan 3).
 	 */
 	public const MIN_AMOUNT_MINOR = 100;
@@ -101,6 +107,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 			'afriex-gateway-for-woocommerce'
 		);
 		$this->has_fields         = false;
+		$this->icon               = self::icon_url();
 		$this->supports           = array( 'products' );
 
 		$this->init_form_fields();
@@ -367,7 +374,8 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 	 *
 	 * Each rule is something process_payment() would otherwise discover after
 	 * the shopper had filled in the whole checkout form:
-	 * - the base class's rules: disabled, no API key, a recorded 401/403;
+	 * - the base class's rules: disabled, no API key, a recorded 401;
+	 * - a 403 Afriex gave the last session create in this environment;
 	 * - a store whose return URL would not be HTTPS, which Afriex refuses;
 	 * - a currency whose minor units Afriex has not defined (plan 16 q3);
 	 * - a total below Afriex's minimum of 100 minor units.
@@ -399,6 +407,12 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 	 */
 	private function availability_problems(): array {
 		$problems = array();
+
+		$refusal = self::session_refusal();
+
+		if ( null !== $refusal ) {
+			$problems[] = self::session_refusal_message( $refusal );
+		}
 
 		if ( ! self::store_can_return() ) {
 			$problems[] = sprintf(
@@ -692,6 +706,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 			);
 
 			self::record_currency_refusal( $session, $currency );
+			self::record_session_refusal( $session, $environment );
 
 			// Tags stripped, entities left alone: block checkout escapes a
 			// thrown message again on its way out (WooCommerce's
@@ -730,6 +745,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 		// A session Afriex accepted is the answer to any earlier refusal of
 		// this currency, so the notice about it goes away on its own.
 		Afriex_Admin::clear_unsupported_currency( $currency );
+		self::clear_session_refusal( $environment );
 
 		$order->add_order_note(
 			sprintf(
@@ -1169,6 +1185,98 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 		}
 
 		Afriex_Admin::record_unsupported_currency( $currency, $code );
+	}
+
+	/**
+	 * Record a 403 from a session create, which hides Afriex Checkout alone.
+	 *
+	 * A bad key is a 401 and hides every Afriex method (F84). A 403 here is
+	 * Afriex refusing this business a checkout session in this environment,
+	 * which will happen to every shopper until the account changes, so the
+	 * method hides instead of failing each checkout — but Bank Transfer,
+	 * which never calls this endpoint, is left alone.
+	 *
+	 * @param WP_Error $error       Error from Afriex_Api_Client.
+	 * @param string   $environment Environment the session was asked in.
+	 */
+	private static function record_session_refusal( WP_Error $error, string $environment ): void {
+		$data = $error->get_error_data();
+		$data = is_array( $data ) ? $data : array();
+
+		if ( 403 !== ( isset( $data['status'] ) ? (int) $data['status'] : 0 ) ) {
+			return;
+		}
+
+		$refusals = get_option( self::SESSION_REFUSED_OPTION, array() );
+		$refusals = is_array( $refusals ) ? $refusals : array();
+
+		$refusals[ Afriex_Api_Client::normalise_environment( $environment ) ] = array(
+			'status' => 403,
+			'code'   => strtoupper( trim( (string) ( $data['code'] ?? '' ) ) ),
+			'time'   => time(),
+		);
+
+		update_option( self::SESSION_REFUSED_OPTION, $refusals, true );
+	}
+
+	/**
+	 * The last session refusal recorded for an environment, or null.
+	 *
+	 * @param string|null $environment Environment, null for the configured one.
+	 * @return array|null status, code, time.
+	 */
+	public static function session_refusal( ?string $environment = null ): ?array {
+		$environment = null === $environment ? Afriex_Account_Settings::environment() : Afriex_Api_Client::normalise_environment( $environment );
+		$refusals    = get_option( self::SESSION_REFUSED_OPTION, array() );
+
+		return is_array( $refusals ) && isset( $refusals[ $environment ] ) && is_array( $refusals[ $environment ] ) ? $refusals[ $environment ] : null;
+	}
+
+	/**
+	 * A session Afriex accepted ends the refusal for its environment.
+	 *
+	 * @param string $environment Environment.
+	 */
+	private static function clear_session_refusal( string $environment ): void {
+		$refusals    = get_option( self::SESSION_REFUSED_OPTION, array() );
+		$environment = Afriex_Api_Client::normalise_environment( $environment );
+
+		if ( ! is_array( $refusals ) || ! isset( $refusals[ $environment ] ) ) {
+			return;
+		}
+
+		unset( $refusals[ $environment ] );
+
+		if ( empty( $refusals ) ) {
+			delete_option( self::SESSION_REFUSED_OPTION );
+		} else {
+			update_option( self::SESSION_REFUSED_OPTION, $refusals, true );
+		}
+	}
+
+	/**
+	 * Forget every session refusal, e.g. when the account settings are saved.
+	 */
+	public static function clear_session_refusals(): void {
+		if ( false !== get_option( self::SESSION_REFUSED_OPTION, false ) ) {
+			delete_option( self::SESSION_REFUSED_OPTION );
+		}
+	}
+
+	/**
+	 * What an admin is told about a session refusal.
+	 *
+	 * @param array $refusal Recorded refusal.
+	 */
+	public static function session_refusal_message( array $refusal ): string {
+		$code = (string) ( $refusal['code'] ?? '' );
+
+		return sprintf(
+			/* translators: 1: environment name, 2: Afriex error code, or empty */
+			__( 'Afriex refused to create a checkout session for your business in %1$s (HTTP 403%2$s). Check with Afriex that Afriex Checkout is enabled for your business account, then save the Afriex settings to try again.', 'afriex-gateway-for-woocommerce' ),
+			Afriex_Account_Settings::environment(),
+			'' !== $code ? ', ' . $code : ''
+		);
 	}
 
 	/**

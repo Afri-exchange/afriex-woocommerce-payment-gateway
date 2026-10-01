@@ -37,7 +37,7 @@ defined( 'ABSPATH' ) || exit;
 	}
 
 	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- compared against a fixed path only.
-	$path = (string) parse_url( isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH );
+	$path = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH );
 
 	if ( '/wp-json/afriex/v1/webhook' === rtrim( $path, '/' ) ) {
 		return;

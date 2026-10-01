@@ -29,18 +29,42 @@ class Afriex_Logger {
 	 */
 	private static $enabled = null;
 
+	/**
+	 * Log an informational message. Skipped unless logging is enabled.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Extra data appended as JSON, redacted before writing.
+	 */
 	public static function info( string $message, array $context = array() ): void {
 		self::log( 'info', $message, $context );
 	}
 
+	/**
+	 * Log a warning. Always written.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Extra data appended as JSON, redacted before writing.
+	 */
 	public static function warning( string $message, array $context = array() ): void {
 		self::log( 'warning', $message, $context );
 	}
 
+	/**
+	 * Log an error. Always written.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Extra data appended as JSON, redacted before writing.
+	 */
 	public static function error( string $message, array $context = array() ): void {
 		self::log( 'error', $message, $context );
 	}
 
+	/**
+	 * Log a debug message. Skipped unless logging is enabled.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Extra data appended as JSON, redacted before writing.
+	 */
 	public static function debug( string $message, array $context = array() ): void {
 		self::log( 'debug', $message, $context );
 	}
@@ -53,6 +77,13 @@ class Afriex_Logger {
 		self::$enabled = null;
 	}
 
+	/**
+	 * Write an entry to the WooCommerce log under the afriex source.
+	 *
+	 * @param string $level   WC_Log_Levels level name.
+	 * @param string $message Log message.
+	 * @param array  $context Extra data appended as JSON, redacted before writing.
+	 */
 	private static function log( string $level, string $message, array $context ): void {
 		// Errors and warnings always land: they are what a support ticket needs.
 		// Info and debug respect the merchant's logging preference.
@@ -75,6 +106,11 @@ class Afriex_Logger {
 		self::$logger->log( $level, $message, array( 'source' => self::SOURCE ) );
 	}
 
+	/**
+	 * Whether info and debug entries should be written. Cached per request.
+	 *
+	 * @return bool
+	 */
 	private static function is_enabled(): bool {
 		if ( null === self::$enabled ) {
 			// The switch lives in the shared account settings, which fall back
@@ -91,6 +127,9 @@ class Afriex_Logger {
 	 * Logs are readable by any shop manager and are routinely pasted into
 	 * support tickets, so credentials and full account numbers are masked at
 	 * the point of writing rather than trusted not to be passed in.
+	 *
+	 * @param array $context Data to redact, walked recursively.
+	 * @return array
 	 */
 	private static function redact( array $context ): array {
 		$secret_keys = array( 'api_key', 'x-api-key', 'webhook_public_key', 'signature', 'authorization' );
@@ -115,6 +154,12 @@ class Afriex_Logger {
 		return $context;
 	}
 
+	/**
+	 * Mask all but the last four characters of a value.
+	 *
+	 * @param string $value Value to mask.
+	 * @return string
+	 */
 	private static function mask( string $value ): string {
 		$length = strlen( $value );
 

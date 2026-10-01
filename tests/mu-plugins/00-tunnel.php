@@ -43,6 +43,14 @@ defined( 'ABSPATH' ) || exit;
 		return;
 	}
 
+	// Afriex Checkout's return endpoint, when AFRIEX_DEV_RETURN_HOST sends the
+	// shopper back through the tunnel. It only checks an HMAC and redirects to
+	// the order-received page on localhost, so it exposes nothing.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput -- compared against a fixed value only.
+	if ( '/' === $path && isset( $_GET['wc-api'] ) && 'afriex_checkout_return' === strtolower( (string) $_GET['wc-api'] ) ) {
+		return;
+	}
+
 	http_response_code( 404 );
 	header( 'Content-Type: text/plain; charset=utf-8' );
 	echo "Not found\n";

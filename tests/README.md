@@ -111,18 +111,19 @@ With real sandbox credentials in the gateway settings, place an order through th
 The mock (next section) answers every Afriex call by default, so "Proceed to Afriex" opens the mock's fake page. To create real sandbox checkout sessions and receive real webhooks, create `.wp-env.override.json` (gitignored) in the repo root:
 
 ```json
-{ "config": { "AFRIEX_DEV_MOCK_API": false, "AFRIEX_DEV_ALLOW_LIVE_API": true } }
+{ "config": { "AFRIEX_DEV_MOCK_API": false, "AFRIEX_DEV_ALLOW_LIVE_API": true, "AFRIEX_DEV_RETURN_HOST": "<tunnel-host>" } }
 ```
 
 ```bash
 npx wp-env start --update
+npm run env:lockdown                                      # re-applies the .htaccess rule
 npm run env:cli -- config get AFRIEX_DEV_MOCK_API        # prints nothing/false
 npm run env:cli -- config get AFRIEX_DEV_ALLOW_LIVE_API  # prints 1
 ```
 
 Then, in WooCommerce > Settings > Payments > Afriex account: set **Environment** to Sandbox, enter your **real sandbox API key** (the seeded `test-api-key` gets a 401), and paste the sandbox webhook public key. In the Afriex sandbox dashboard, register the tunnel URL `https://<tunnel-host>/wp-json/afriex/v1/webhook`, and keep the tunnel running.
 
-[`tests/mu-plugins/15-afriex-live-sandbox.php`](mu-plugins/15-afriex-live-sandbox.php) gives Afriex the https return URL it requires, as the mock otherwise does. After paying, Afriex sends the browser to `https://localhost:8888/...`, which this TLS-less site cannot serve: change `https` to `http` in the address bar. The webhook does not depend on that redirect.
+[`tests/mu-plugins/15-afriex-live-sandbox.php`](mu-plugins/15-afriex-live-sandbox.php) gives Afriex the https return URL it requires, as the mock otherwise does: `https://<AFRIEX_DEV_RETURN_HOST>/?wc-api=afriex_checkout_return&...`. Both tunnel guards let that one endpoint through; it checks its HMAC and redirects to the order-received page on `http://localhost:8888`, which the browser on this machine opens. Everything else on the tunnel host still 404s. Without `AFRIEX_DEV_RETURN_HOST` the return URL is `https://localhost:8888/...`, which this TLS-less site cannot serve: change `https` to `http` in the address bar. The webhook depends on neither.
 
 Delete `.wp-env.override.json` and run `npx wp-env start --update` to go back to the mock.
 

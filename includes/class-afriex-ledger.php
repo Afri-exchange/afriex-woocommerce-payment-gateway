@@ -720,7 +720,7 @@ class Afriex_Ledger {
 	 * retrying it is safe, and without a retry the victim would wrongly report
 	 * a lost claim even though nobody holds the key. Errors are suppressed
 	 * during the attempt so an expected deadlock does not flood the PHP error
-	 * log; any other failure is logged once, as wpdb would have done.
+	 * log; any other failure is logged once, to the WooCommerce log.
 	 *
 	 * @param string $sql Prepared SQL.
 	 * @return int|bool wpdb::query() result.
@@ -751,8 +751,7 @@ class Afriex_Ledger {
 			// A missing table is repaired by the caller; anything else is a
 			// real fault the site owner needs to see.
 			if ( '' !== $error && 1 !== preg_match( "/doesn't exist|no such table/i", $error ) ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Mirrors wpdb's own logging of database errors, which was suppressed above.
-				error_log( 'Afriex ledger database error: ' . $error );
+				Afriex_Logger::error( 'Afriex ledger database error', array( 'error' => $error ) );
 			}
 
 			return false;

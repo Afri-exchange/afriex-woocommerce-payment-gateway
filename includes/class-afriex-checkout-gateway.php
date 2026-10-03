@@ -492,7 +492,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 	 * two can never disagree.
 	 */
 	public static function return_url_base(): string {
-		return (string) apply_filters( 'woocommerce_afriex_checkout_return_url_base', home_url( '/' ) );
+		return (string) apply_filters( 'afriex_wc_checkout_return_url_base', home_url( '/' ) );
 	}
 
 	/**
@@ -948,7 +948,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 		}
 
 		$created = isset( $row['created'] ) && is_numeric( $row['created'] ) ? (int) $row['created'] : 0;
-		$life    = (int) apply_filters( 'woocommerce_afriex_checkout_session_lifetime', self::DEFAULT_SESSION_LIFETIME );
+		$life    = (int) apply_filters( 'afriex_wc_checkout_session_lifetime', self::DEFAULT_SESSION_LIFETIME );
 
 		return $created + ( $life > 0 ? $life : self::DEFAULT_SESSION_LIFETIME );
 	}
@@ -1071,7 +1071,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 	/**
 	 * Whether a host may be redirected to for a hosted payment page.
 	 *
-	 * The filter is `woocommerce_afriex_checkout_url_hosts`: an array of
+	 * The filter is `afriex_wc_checkout_url_hosts`: an array of
 	 * host names, each matching itself and its subdomains. Afriex's own
 	 * domain is always allowed.
 	 *
@@ -1082,7 +1082,7 @@ class Afriex_Checkout_Gateway extends Afriex_Payment_Gateway {
 			return true;
 		}
 
-		$hosts = apply_filters( 'woocommerce_afriex_checkout_url_hosts', array( 'afriex.com' ) );
+		$hosts = apply_filters( 'afriex_wc_checkout_url_hosts', array( 'afriex.com' ) );
 
 		if ( ! is_array( $hosts ) ) {
 			return false;

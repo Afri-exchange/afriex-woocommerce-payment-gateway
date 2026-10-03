@@ -1,6 +1,8 @@
 # The compiled block bundle ships in assets/js/build/, so assets/js/src/ ships
-# with it. WordPress.org requires human-readable source alongside compiled or
-# minified code; excluding it is a routine review rejection.
+# with it, and so do package.json and webpack.config.js, the tools that build
+# one from the other. WordPress.org requires human-readable source and its
+# build tools alongside compiled or minified code; excluding them is a routine
+# review rejection.
 /.git
 /.github
 /.qodo
@@ -12,14 +14,13 @@
 /reports
 .distignore
 .wp-env.json
+.wp-env.override.json
 .eslintrc.js
 .gitignore
 composer.json
 composer.lock
-package.json
 package-lock.json
 phpcs.xml.dist
 phpunit.xml.dist
 .phpunit.result.cache
-webpack.config.js
 README.md

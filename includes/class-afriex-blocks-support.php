@@ -109,11 +109,7 @@ class Afriex_Blocks_Support extends AbstractPaymentMethodType {
 		);
 
 		if ( function_exists( 'wp_set_script_translations' ) ) {
-			wp_set_script_translations(
-				self::SCRIPT_HANDLE,
-				'afriex-gateway-for-woocommerce',
-				AFRIEX_WC_PLUGIN_DIR . 'languages'
-			);
+			wp_set_script_translations( self::SCRIPT_HANDLE, 'afriex-gateway-for-woocommerce' );
 		}
 
 		return array( self::SCRIPT_HANDLE );

@@ -876,7 +876,7 @@ class Afriex_Scheduler {
 		 * @param bool     $due      Whether its deadline has passed.
 		 * @param int      $deadline The deadline, as a UNIX time, or 0.
 		 */
-		do_action( 'woocommerce_afriex_sweep_checkout_order', $order, $due, Afriex_Order_Meta::get_deadline( $order ) );
+		do_action( 'afriex_wc_sweep_checkout_order', $order, $due, Afriex_Order_Meta::get_deadline( $order ) );
 
 		$open = in_array( $order->get_status(), self::OPEN_STATUSES, true );
 
@@ -1205,7 +1205,7 @@ class Afriex_Scheduler {
 		 * @param int[]    $backoff Intervals; the last repeats.
 		 * @param WC_Order $order   Order.
 		 */
-		$backoff = apply_filters( 'woocommerce_afriex_sweep_backoff', self::BACKOFF, $order );
+		$backoff = apply_filters( 'afriex_wc_sweep_backoff', self::BACKOFF, $order );
 		$backoff = is_array( $backoff ) && ! empty( $backoff ) ? array_values( $backoff ) : self::BACKOFF;
 
 		$step     = min( $count, count( $backoff ) - 1 );

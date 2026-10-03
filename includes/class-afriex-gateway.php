@@ -899,7 +899,7 @@ class Afriex_Gateway extends Afriex_Payment_Gateway {
 		// Mark on-hold: we are awaiting an external bank transfer.
 		// Filterable, mirroring the BACS gateway convention, so existing store
 		// customisations behave the way merchants expect.
-		$status = (string) apply_filters( 'woocommerce_afriex_process_payment_order_status', 'on-hold', $order );
+		$status = (string) apply_filters( 'afriex_wc_process_payment_order_status', 'on-hold', $order );
 
 		if ( ! $order->has_status( $status ) ) {
 			$order->update_status( $status, __( 'Awaiting Afriex bank transfer.', 'afriex-gateway-for-woocommerce' ) );

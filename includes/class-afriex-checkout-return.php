@@ -793,10 +793,11 @@ class Afriex_Checkout_Return {
 		return array(
 			'statusUrl' => self::status_url( $order ),
 			'panelId'   => self::PANEL_ID,
-			'interval'  => (int) apply_filters( 'woocommerce_afriex_checkout_poll_interval_ms', self::POLL_INTERVAL_MS, $order ),
-			'window'    => (int) apply_filters( 'woocommerce_afriex_checkout_poll_window_ms', self::POLL_WINDOW_MS, $order ),
+			'interval'  => (int) apply_filters( 'afriex_wc_checkout_poll_interval_ms', self::POLL_INTERVAL_MS, $order ),
+			'window'    => (int) apply_filters( 'afriex_wc_checkout_poll_window_ms', self::POLL_WINDOW_MS, $order ),
 			'i18n'      => array(
 				'settled'  => __( 'Payment confirmed. Loading your order...', 'afriex-gateway-for-woocommerce' ),
+				'failed'   => __( 'The payment did not go through. Loading your order...', 'afriex-gateway-for-woocommerce' ),
 				'timedOut' => __( 'Afriex has not confirmed this payment yet. You can close this page: we will email you as soon as the payment is confirmed.', 'afriex-gateway-for-woocommerce' ),
 			),
 		);

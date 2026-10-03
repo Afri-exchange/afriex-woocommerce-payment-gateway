@@ -36,7 +36,7 @@ defined( 'ABSPATH' ) || exit;
  * of a create call can mint a second customer, account or session (F39).
  *
  * Time. Each call has its own timeout, filterable through
- * woocommerce_afriex_http_timeout, and a caller can set a total time budget so
+ * afriex_wc_http_timeout, and a caller can set a total time budget so
  * two sequential calls cannot outlast a proxy's 60 s limit (F39) or Afriex's
  * 30 s webhook wait.
  *
@@ -605,7 +605,7 @@ class Afriex_Api_Client {
 		 * @param string $path        Path after /api/v1.
 		 * @param string $environment 'sandbox' or 'production'.
 		 */
-		$timeout = max( 1.0, (float) apply_filters( 'woocommerce_afriex_http_timeout', $timeout, $method, $path, $this->environment ) );
+		$timeout = max( 1.0, (float) apply_filters( 'afriex_wc_http_timeout', $timeout, $method, $path, $this->environment ) );
 
 		$remaining = $this->remaining_budget();
 
@@ -637,7 +637,7 @@ class Afriex_Api_Client {
 		 * @param string $url         Base URL including the /api/v1 prefix.
 		 * @param string $environment 'sandbox' or 'production'.
 		 */
-		$url = untrailingslashit( (string) apply_filters( 'woocommerce_afriex_api_base_url', $default, $this->environment ) );
+		$url = untrailingslashit( (string) apply_filters( 'afriex_wc_api_base_url', $default, $this->environment ) );
 
 		if ( $url === $default ) {
 			return $url;

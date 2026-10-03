@@ -162,14 +162,14 @@ class Afriex_Mock_Api {
 		// The plugin refuses a checkoutUrl that is not on afriex.com (plan
 		// 5.1 step 7). The mock's hosted page is this site, so allow this
 		// host — only ever here, in a file that never ships.
-		add_filter( 'woocommerce_afriex_checkout_url_hosts', array( __CLASS__, 'allow_local_checkout_host' ) );
+		add_filter( 'afriex_wc_checkout_url_hosts', array( __CLASS__, 'allow_local_checkout_host' ) );
 
 		// Afriex refuses a redirectUrl that is not https, and the plugin
 		// hides Afriex Checkout on a store whose return URL would not be
 		// (plan 4.2, 5.1). This dev site is plain http, so the return base is
 		// given the https scheme here — only ever here, in a file that never
 		// ships — so that the method can be exercised at all locally.
-		add_filter( 'woocommerce_afriex_checkout_return_url_base', array( __CLASS__, 'https_return_base' ) );
+		add_filter( 'afriex_wc_checkout_return_url_base', array( __CLASS__, 'https_return_base' ) );
 
 		// The https checkoutUrl above cannot be opened on this TLS-less site,
 		// so the redirect the shopper's browser follows is sent over http.

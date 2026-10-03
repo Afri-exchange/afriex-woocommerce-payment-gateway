@@ -40,7 +40,7 @@ if (
 }
 
 add_filter(
-	'woocommerce_afriex_checkout_return_url_base',
+	'afriex_wc_checkout_return_url_base',
 	static function ( $base ): string {
 		$host = defined( 'AFRIEX_DEV_RETURN_HOST' ) ? strtolower( trim( (string) AFRIEX_DEV_RETURN_HOST ) ) : '';
 

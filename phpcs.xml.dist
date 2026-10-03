@@ -33,7 +33,6 @@
 			<property name="prefixes" type="array">
 				<element value="afriex"/>
 				<element value="AFRIEX_WC"/>
-				<element value="woocommerce_afriex"/>
 			</property>
 		</properties>
 	</rule>

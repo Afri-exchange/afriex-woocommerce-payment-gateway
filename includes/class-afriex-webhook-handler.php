@@ -46,6 +46,15 @@ class Afriex_Webhook_Handler {
 	private const ENVIRONMENT_HEADER = 'x-afriex-env';
 
 	/**
+	 * How many rejected-delivery lines a minute the webhook may write.
+	 *
+	 * The route is public, so anyone can send it junk. Enough that a missing
+	 * key or a wrong one shows up at once, few enough that nobody can grow the
+	 * log file at will.
+	 */
+	private const REJECTED_LOG_BURST = 5;
+
+	/**
 	 * How long a finished event is remembered, so a replay days later is
 	 * still recognised. Afriex's retry window is about 32 hours.
 	 */
@@ -172,14 +181,14 @@ class Afriex_Webhook_Handler {
 		self::$verified_environment = '';
 
 		if ( ! function_exists( 'openssl_verify' ) ) {
-			Afriex_Logger::error( 'Webhook rejected: the PHP openssl extension is not available' );
+			self::log_rejection( 'error', 'Webhook rejected: the PHP openssl extension is not available' );
 			return false;
 		}
 
 		$signature = (string) $request->get_header( self::SIGNATURE_HEADER );
 
 		if ( '' === $signature ) {
-			Afriex_Logger::warning( 'Webhook rejected: missing signature header' );
+			self::log_rejection( 'warning', 'Webhook rejected: missing signature header' );
 			return false;
 		}
 
@@ -188,7 +197,7 @@ class Afriex_Webhook_Handler {
 		$decoded_signature = base64_decode( $signature, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decoding a binary signature, not obfuscating code.
 
 		if ( false === $decoded_signature || '' === $decoded_signature ) {
-			Afriex_Logger::warning( 'Webhook rejected: signature was not valid base64' );
+			self::log_rejection( 'warning', 'Webhook rejected: signature was not valid base64' );
 			return false;
 		}
 
@@ -198,14 +207,14 @@ class Afriex_Webhook_Handler {
 		$raw_body = $request->get_body();
 
 		if ( '' === $raw_body ) {
-			Afriex_Logger::warning( 'Webhook rejected: empty body' );
+			self::log_rejection( 'warning', 'Webhook rejected: empty body' );
 			return false;
 		}
 
 		$keys = self::public_keys( (string) $request->get_header( self::ENVIRONMENT_HEADER ) );
 
 		if ( empty( $keys ) ) {
-			Afriex_Logger::error( 'Webhook rejected: no public key configured' );
+			self::log_rejection( 'error', 'Webhook rejected: no public key configured' );
 			return false;
 		}
 
@@ -216,8 +225,31 @@ class Afriex_Webhook_Handler {
 			}
 		}
 
-		Afriex_Logger::warning( 'Webhook rejected: signature verification failed' );
+		self::log_rejection( 'warning', 'Webhook rejected: signature verification failed' );
 		return false;
+	}
+
+	/**
+	 * Log a rejected delivery, a few a minute at most.
+	 *
+	 * Warnings and errors are never gated on the merchant's logging
+	 * preference, so without the throttle anyone who can reach the route
+	 * could fill a log file the merchant cannot switch off.
+	 *
+	 * @param string $level   'warning' or 'error'.
+	 * @param string $message What was wrong with the delivery.
+	 */
+	private static function log_rejection( string $level, string $message ): void {
+		if ( ! Afriex_Ledger::throttle( 'webhook:rejected', MINUTE_IN_SECONDS, self::REJECTED_LOG_BURST ) ) {
+			return;
+		}
+
+		if ( 'error' === $level ) {
+			Afriex_Logger::error( $message );
+			return;
+		}
+
+		Afriex_Logger::warning( $message );
 	}
 
 	/**

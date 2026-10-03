@@ -192,7 +192,7 @@ class Afriex_Bank_Transfer_Sweep {
 		 *
 		 * @param bool $settle Whether settling from the listing is allowed.
 		 */
-		return (bool) apply_filters( 'woocommerce_afriex_settle_bank_transfer_from_sweep', self::SETTLE_FROM_LISTING );
+		return (bool) apply_filters( 'afriex_wc_settle_bank_transfer_from_sweep', self::SETTLE_FROM_LISTING );
 	}
 
 	/*

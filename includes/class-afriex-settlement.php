@@ -79,7 +79,7 @@ class Afriex_Settlement {
 	/**
 	 * Default extension when the deadline passes while Afriex still has the
 	 * payment in flight. Filterable through
-	 * woocommerce_afriex_deadline_extension.
+	 * afriex_wc_deadline_extension.
 	 */
 	private const DEADLINE_EXTENSION = 1800;
 
@@ -1771,7 +1771,7 @@ class Afriex_Settlement {
 			 * @param int      $seconds Extension in seconds.
 			 * @param WC_Order $order   Order.
 			 */
-			$extension = (int) apply_filters( 'woocommerce_afriex_deadline_extension', self::DEADLINE_EXTENSION, $order );
+			$extension = (int) apply_filters( 'afriex_wc_deadline_extension', self::DEADLINE_EXTENSION, $order );
 
 			Afriex_Order_Meta::extend_deadline( $order, time() + max( 60, $extension ) );
 			Afriex_Order_Meta::note_once(
@@ -1928,7 +1928,7 @@ class Afriex_Settlement {
 	 */
 	private static function back_off_deadline( WC_Order $order ): void {
 		/** This filter is documented in includes/class-afriex-settlement.php */
-		$extension = (int) apply_filters( 'woocommerce_afriex_deadline_extension', self::DEADLINE_EXTENSION, $order );
+		$extension = (int) apply_filters( 'afriex_wc_deadline_extension', self::DEADLINE_EXTENSION, $order );
 
 		Afriex_Order_Meta::extend_deadline( $order, time() + max( 60, $extension ) );
 	}

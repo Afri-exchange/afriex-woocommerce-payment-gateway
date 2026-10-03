@@ -1,16 +1,15 @@
 <?php
 /**
  * Plugin Name: Afriex Gateway for WooCommerce
- * Plugin URI: https://github.com/codewithveek/afriex-woocommerce-payment-gateway
- * Description: Accept bank transfer and mobile money payments through Afriex virtual accounts.
- * Version: 1.1.0-dev
+ * Plugin URI: https://github.com/Afri-exchange/afriex-woocommerce-payment-gateway
+ * Description: Accept card, bank transfer and mobile money payments through Afriex Checkout, or a dedicated Nigerian bank account for every order.
+ * Version: 1.1.0
  * Author: Afriex
  * Author URI: https://afriex.com
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: afriex-gateway-for-woocommerce
- * Domain Path: /languages
- * Requires at least: 6.0
+ * Requires at least: 6.2
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
  * WC requires at least: 8.0
@@ -21,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFRIEX_WC_VERSION', '1.1.0-dev' );
+define( 'AFRIEX_WC_VERSION', '1.1.0' );
 define( 'AFRIEX_WC_PLUGIN_FILE', __FILE__ );
 define( 'AFRIEX_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 

@@ -84,7 +84,9 @@
 				// is rendered server-side, so the page is reloaded rather
 				// than patched up here.
 				if ( status === 'paid' || status === 'failed' ) {
-					finish( strings.settled );
+					finish(
+						status === 'paid' ? strings.settled : strings.failed
+					);
 					window.location.reload();
 					return;
 				}

@@ -16,6 +16,13 @@ npm run start      # watch mode
 
 `webpack.config.js` swaps the default dependency-extraction plugin for WooCommerce's. That is what makes `@woocommerce/blocks-registry` and `@woocommerce/settings` resolve to the `wc.*` globals WooCommerce prints on the page, rather than being bundled — they are intentionally not installed as dependencies.
 
+## Releasing
+
+1. Set the same version in the plugin header `Version`, `AFRIEX_WC_VERSION` and readme.txt `Stable tag`. WordPress.org rejects a mismatch, and a suffix such as `-dev`.
+2. Run `npm run build`, so the ZIP carries a bundle built from the current source.
+3. Build the ZIP with `wp dist-archive . --plugin-dirname=afriex-gateway-for-woocommerce`, which honours [.distignore](.distignore). The folder inside the ZIP must be `afriex-gateway-for-woocommerce/`, to match the main file and the text domain.
+4. Run [Plugin Check](https://wordpress.org/plugins/plugin-check/) against the installed ZIP and clear every error.
+
 ## Linting
 
 ```bash

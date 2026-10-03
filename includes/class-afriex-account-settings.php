@@ -55,6 +55,11 @@ class Afriex_Account_Settings extends WC_Settings_API {
 	private const TRANSIENT_FIELDS = array( 'clear_api_key', 'webhook_url' );
 
 	/**
+	 * Script handle for the webhook URL field's select and copy behaviour.
+	 */
+	private const WEBHOOK_URL_SCRIPT = 'afriex-webhook-url';
+
+	/**
 	 * Shared instance: both gateways render and save the same object.
 	 *
 	 * @var Afriex_Account_Settings|null
@@ -373,6 +378,8 @@ class Afriex_Account_Settings extends WC_Settings_API {
 			)
 		);
 
+		self::enqueue_webhook_url_script();
+
 		ob_start();
 		?>
 		<tr valign="top">
@@ -382,14 +389,52 @@ class Afriex_Account_Settings extends WC_Settings_API {
 			<td class="forminp">
 				<fieldset>
 					<legend class="screen-reader-text"><span><?php echo wp_kses_post( $data['title'] ); ?></span></legend>
-					<input class="input-text regular-input code" type="text" id="<?php echo esc_attr( $field_key ); ?>" value="<?php echo esc_attr( $url ); ?>" readonly="readonly" onfocus="this.select();" />
-					<button type="button" class="button afriex-copy-webhook-url" data-target="<?php echo esc_attr( $field_key ); ?>" onclick="var f=document.getElementById(this.getAttribute('data-target'));if(navigator.clipboard){navigator.clipboard.writeText(f.value);}else{f.select();document.execCommand('copy');}this.textContent=this.getAttribute('data-done');" data-done="<?php echo esc_attr__( 'Copied', 'afriex-gateway-for-woocommerce' ); ?>"><?php echo esc_html__( 'Copy', 'afriex-gateway-for-woocommerce' ); ?></button>
+					<input class="input-text regular-input code afriex-webhook-url" type="text" id="<?php echo esc_attr( $field_key ); ?>" value="<?php echo esc_attr( $url ); ?>" readonly="readonly" />
+					<button type="button" class="button afriex-copy-webhook-url" data-target="<?php echo esc_attr( $field_key ); ?>" data-done="<?php echo esc_attr__( 'Copied', 'afriex-gateway-for-woocommerce' ); ?>"><?php echo esc_html__( 'Copy', 'afriex-gateway-for-woocommerce' ); ?></button>
 					<?php echo $this->get_description_html( $data ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WooCommerce escapes the description. ?>
 				</fieldset>
 			</td>
 		</tr>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Select the webhook URL on focus, and copy it with the Copy button.
+	 *
+	 * Enqueued by the field itself, so it loads only on the screen that draws
+	 * the field. The field is drawn after the head has printed, so the script
+	 * goes in the footer, which WordPress still prints for a late enqueue.
+	 */
+	private static function enqueue_webhook_url_script(): void {
+		if ( wp_script_is( self::WEBHOOK_URL_SCRIPT, 'enqueued' ) ) {
+			return;
+		}
+
+		wp_register_script( self::WEBHOOK_URL_SCRIPT, false, array(), AFRIEX_WC_VERSION, true );
+		wp_add_inline_script(
+			self::WEBHOOK_URL_SCRIPT,
+			'document.addEventListener( "focusin", function ( event ) {
+				if ( event.target.classList && event.target.classList.contains( "afriex-webhook-url" ) ) {
+					event.target.select();
+				}
+			} );
+			document.addEventListener( "click", function ( event ) {
+				var button = event.target.closest ? event.target.closest( ".afriex-copy-webhook-url" ) : null;
+				var field  = button ? document.getElementById( button.getAttribute( "data-target" ) ) : null;
+				if ( ! field ) {
+					return;
+				}
+				if ( navigator.clipboard ) {
+					navigator.clipboard.writeText( field.value );
+				} else {
+					field.select();
+					document.execCommand( "copy" );
+				}
+				button.textContent = button.getAttribute( "data-done" );
+			} );'
+		);
+		wp_enqueue_script( self::WEBHOOK_URL_SCRIPT );
 	}
 
 	/**

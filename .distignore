@@ -5,6 +5,7 @@
 # review rejection.
 /.git
 /.github
+/.wordpress-org
 /.qodo
 /archs
 /node_modules

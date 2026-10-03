@@ -22,6 +22,7 @@ npm run start      # watch mode
 2. Run `npm run build`, so the ZIP carries a bundle built from the current source.
 3. Build the ZIP with `wp dist-archive . --plugin-dirname=afriex-gateway-for-woocommerce`, which honours [.distignore](.distignore). The folder inside the ZIP must be `afriex-gateway-for-woocommerce/`, to match the main file and the text domain.
 4. Run [Plugin Check](https://wordpress.org/plugins/plugin-check/) against the installed ZIP and clear every error.
+5. Copy [.wordpress-org/](.wordpress-org) into the top-level SVN `assets/` folder, not into `trunk/`. It holds the screenshots that readme.txt's `== Screenshots ==` captions describe, in the same order.
 
 ## Linting
 

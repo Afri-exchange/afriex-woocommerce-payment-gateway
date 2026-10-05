@@ -71,7 +71,7 @@
 		<exclude-pattern>/tests/unit/bootstrap.php</exclude-pattern>
 	</rule>
 
-	<config name="minimum_wp_version" value="6.0"/>
+	<config name="minimum_wp_version" value="6.2"/>
 	<config name="testVersion" value="7.4-"/>
 
 	<rule ref="PHPCompatibilityWP"/>

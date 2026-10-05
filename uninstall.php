@@ -58,8 +58,8 @@ function afriex_wc_uninstall_site(): void {
 
 	$table = $wpdb->prefix . 'afriex_ledger';
 
-	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall drops the plugin's own table; the name is built from $wpdb->prefix.
-	$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall drops the plugin's own table.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 }
 
 if ( is_multisite() ) {
